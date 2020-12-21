@@ -37,6 +37,7 @@ const simpleHtmlPage = `<!DOCTYPE html>
     <div>
         <a href="/api/v1/rules" target="_blank">查看所有规则</a>
     </div>
+    <br /><br />
     <div>
         <form>
             群号: <input id="group_id" type="number">（全部则填0）<br />
