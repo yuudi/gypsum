@@ -7,7 +7,7 @@ import (
 )
 
 var Config = struct {
-	Listen string
+	Listen   string
 	Username string
 	Password string
 }{

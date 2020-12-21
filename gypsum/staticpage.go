@@ -19,7 +19,7 @@ const simpleHtmlPage = `<!DOCTYPE html>
         }
         $(document).ready(function () {
             alert("此页面仅供测试，未作输入验证，任何非法输入都可能导致程序崩溃");
-            $("button").click(function () {
+            $("#add_rule").click(function () {
                 $.post({
                     url: "/api/v1/rules",
                     data: JSON.stringify(getForm()),
@@ -27,6 +27,16 @@ const simpleHtmlPage = `<!DOCTYPE html>
                 }).done(function (data, status) {
                     alert(JSON.stringify(data));
                 })
+            });
+            $("#delete_rule").click(function () {
+                let rule_id = $("#rule_id")[0].valueAsNumber;
+				$.ajax({
+					url: "/api/v1/rules/" + rule_id,
+					type: "DELETE",
+					success: function(result) {
+						alert(JSON.stringify(result));
+					}
+				});
             });
         });
     </script>
@@ -52,11 +62,16 @@ const simpleHtmlPage = `<!DOCTYPE html>
                 <option value="5">正则匹配</option>
             </select><br />
             匹配: <input id="pattern"><br />
-            回复: <input id="response"><br />
+            回复: <textarea id="response" cols="60" rows="5"></textarea><br />
             优先级: <input id="priority" type="number"><br />
             阻止后续: <input id="block" type="checkbox"><br />
         </form>
-        <button>新增规则</button>
+        <button id="add_rule">新增规则</button>
+    </div>
+    <br /><br />
+    <div>
+    规则号: <input id="rule_id" type="number">
+    <button id="delete_rule">删除规则</button>
     </div>
 </body>
 

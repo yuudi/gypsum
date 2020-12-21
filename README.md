@@ -2,13 +2,13 @@
 
 石膏自定义
 
-gypsum 是受到 [铃心自定义](https://gitee.com/Mepk/epk) 的启发，基于 [ZeroBot](https://github.com/wdvxdr1123/ZeroBot) 的实现可视化控制台
+gypsum 是受到 [铃心自定义](http://myepk.club/) 的启发，基于 [ZeroBot](https://github.com/wdvxdr1123/ZeroBot) 的实现可视化控制台
 
 ![预览图](./imgs/preview.png)
 
 ## 用法
 
-**！！！警告：目前版本仅供测试。无输入验证，用于生产环境请谨慎**
+**！！！警告：目前版本仅供测试。无前端验证，用于生产环境请谨慎**
 
 1. 修改 `onebot` 的配置文件，启用`正向ws`
 1. 启动一次 `gypsum`，生成 `gypsum_config.toml` 配置文件
@@ -24,3 +24,4 @@ gypsum 是受到 [铃心自定义](https://gitee.com/Mepk/epk) 的启发，基�
 - [ ] 接口文档
 - [ ] 自动更新
 - [ ] 更强大的回复模板
+- [ ] 模板文档

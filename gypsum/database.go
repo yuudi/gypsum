@@ -1,17 +1,18 @@
 package gypsum
 
 import (
+	"log"
+
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
-	"log"
 )
 
 var db *leveldb.DB
 var cursor uint64
 
 func initDb() (err error) {
-	db, err = leveldb.OpenFile("gypsum/data", nil)
+	db, err = leveldb.OpenFile("gypsum_data/data", nil)
 	if err != nil {
 		return err
 	}
