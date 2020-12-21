@@ -23,10 +23,14 @@ func serve() {
 	}
 	r := gin.Default()
 	r.Use(static.Serve("/", static.LocalFile("./public", true)))
-	r.GET("/api/v1/rules", func(c *gin.Context) {
+
+	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
+		Config.Username: Config.Password,
+	}))
+	authorized.GET("/api/v1/rules", func(c *gin.Context) {
 		c.JSON(200, rules)
 	})
-	r.GET("/api/v1/rules/:rid", func(c *gin.Context) {
+	authorized.GET("/api/v1/rules/:rid", func(c *gin.Context) {
 		ruleIdStr := c.Param("rid")
 		ruleId, err := strconv.ParseUint(ruleIdStr, 10, 64)
 		if err != nil {
@@ -46,7 +50,7 @@ func serve() {
 			}
 		}
 	})
-	r.POST("/api/v1/rules", func(c *gin.Context) {
+	authorized.POST("/api/v1/rules", func(c *gin.Context) {
 		var rule Rule
 		if err := c.BindJSON(&rule); err != nil {
 			c.JSON(400, gin.H{
@@ -75,7 +79,7 @@ func serve() {
 			return
 		}
 	})
-	err := r.Run(Listen)
+	err := r.Run(Config.Listen)
 	if err != nil {
 		log.Printf("binding address error: %s", err)
 		//panic(err)

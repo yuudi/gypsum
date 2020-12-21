@@ -15,14 +15,22 @@ type Config struct {
 	Host        string
 	Port        int
 	AccessToken string
-	Listen      string
+	Gypsum      struct {
+		Listen   string
+		Username string
+		Password string
+	}
 }
 
 const defaultConfig = `
 Host = "127.0.0.1"
 Port = 6700
 AccessToken = ""
+
+[Gypsum]
 Listen = "0.0.0.0:9900"
+Username = "admin"
+Password = "set-your-password-here"
 `
 
 func main() {
@@ -40,7 +48,7 @@ func main() {
 		return
 
 	}
-	gypsum.Listen = conf.Listen
+	gypsum.Config = conf.Gypsum
 	zero.Run(zero.Option{
 		Host:          conf.Host,
 		Port:          strconv.Itoa(conf.Port),

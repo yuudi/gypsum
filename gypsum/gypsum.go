@@ -6,7 +6,15 @@ import (
 	zero "github.com/wdvxdr1123/ZeroBot"
 )
 
-var Listen = "0.0.0.0:9900"
+var Config = struct {
+	Listen string
+	Username string
+	Password string
+}{
+	"0.0.0.0:9900",
+	"admin",
+	"admin",
+}
 
 func init() {
 	zero.RegisterPlugin(&gypsumPlugin{}) // 注册插件
