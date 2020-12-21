@@ -3,8 +3,8 @@ package gypsum
 import (
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	zero "github.com/wdvxdr1123/ZeroBot"
 	"log"
-	"strconv"
 )
 
 var db *leveldb.DB
@@ -31,6 +31,7 @@ func initDb() (err error) {
 func loadData() (err error) {
 	iter := db.NewIterator(util.BytesPrefix([]byte("gypsum-rules-")), nil)
 	rules = make(map[uint64]Rule)
+	zeroMatcher = make(map[uint64]*zero.Matcher)
 	for iter.Next() {
 		key := ToUint(iter.Key()[13:])
 		value := iter.Value()
@@ -40,7 +41,7 @@ func loadData() (err error) {
 			continue
 		}
 		rules[key] = *r
-		if e := r.Register("rule" + strconv.FormatUint(key, 10)); e != nil {
+		if e := r.Register(key); e != nil {
 			log.Printf("无法注册规则%d：%s", key, e)
 			continue
 		}
