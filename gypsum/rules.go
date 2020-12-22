@@ -2,12 +2,11 @@ package gypsum
 
 import (
 	"bytes"
-	"encoding/gob"
-	"github.com/Masterminds/sprig"
-	zero "github.com/wdvxdr1123/ZeroBot"
 	"log"
-	"strconv"
-	"text/template"
+
+	"encoding/gob"
+	"github.com/flosch/pongo2"
+	zero "github.com/wdvxdr1123/ZeroBot"
 )
 
 type MatcherType int
@@ -70,8 +69,7 @@ func userRule(userId int64) zero.Rule {
 }
 
 func (h *Rule) Register(id uint64) (err error) {
-	name:="rule" + strconv.FormatUint(cursor, 10)
-	tmpl, err := template.New(name).Funcs(sprig.TxtFuncMap()).Parse(h.Response)
+	tmpl, err := pongo2.FromString(h.Response)
 	if err != nil {
 		log.Printf("模板预处理出错：%s", err)
 		return
@@ -95,14 +93,18 @@ func (h *Rule) Register(id uint64) (err error) {
 	return
 }
 
-func templateHandler(tmpl template.Template) zero.Handler {
+func templateHandler(tmpl pongo2.Template) zero.Handler {
 	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
-		buf := &bytes.Buffer{}
-		if err := tmpl.Execute(buf, executor{*matcher, event, state}); err != nil {
+		reply, err := tmpl.Execute(pongo2.Context{
+			"matcher": matcher,
+			"event": event,
+			"state": state,
+		})
+		if err != nil {
 			log.Printf("渲染模板出错：%s", err)
 			return zero.FinishResponse
 		}
-		zero.Send(event, buf.String())
+		zero.Send(event, reply)
 		return zero.FinishResponse
 	}
 }

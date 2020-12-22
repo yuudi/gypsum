@@ -26,7 +26,7 @@ func (_ *gypsumPlugin) GetPluginInfo() zero.PluginInfo { // 返回插件信息
 	return zero.PluginInfo{
 		Author:     "yuudi",
 		PluginName: "石膏自定义",
-		Version:    "0.1.0-beta.1",
+		Version:    "0.2.0-alpha.1",
 		Details:    "石膏自定义",
 	}
 }

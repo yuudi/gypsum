@@ -2,25 +2,15 @@ package gypsum
 
 import (
 	"fmt"
+	"log"
+	"strconv"
+
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
-	"io/ioutil"
-	"log"
-	"os"
-	"strconv"
 )
 
 func serve() {
-	if _, err := os.Stat("./public"); os.IsNotExist(err) {
-		if err := os.Mkdir("./public", 0644); err != nil {
-			log.Printf("%s", err)
-		}
-		if _, err := os.Stat("./public/index.html"); os.IsNotExist(err) {
-			if err := ioutil.WriteFile("./public/index.html", []byte(simpleHtmlPage), 0644); err != nil {
-				log.Printf("%s", err)
-			}
-		}
-	}
+	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 	r.Use(static.Serve("/", static.LocalFile("./public", true)))
 
@@ -59,7 +49,7 @@ func serve() {
 			})
 			return
 		}
-		cursor += 1
+		cursor++
 		_ = db.Put([]byte("gypsum-$meta-cursor"), ToBytes(cursor), nil)
 		v, err := rule.ToBytes()
 		if err != nil {
@@ -138,18 +128,16 @@ func serve() {
 				"message": fmt.Sprintf("converting error: %s", err),
 			})
 			return
-		} else {
-			db.Put(append([]byte("gypsum-rules-"), ToBytes(ruleId)...), v, nil)
-			zeroMatcher[ruleId].Delete()
-			rule.Register(ruleId)
-			rules[ruleId] = rule
-			c.JSON(200, gin.H{
-				"code":    0,
-				"message": "ok",
-			})
-			return
 		}
-
+		db.Put(append([]byte("gypsum-rules-"), ToBytes(ruleId)...), v, nil)
+		zeroMatcher[ruleId].Delete()
+		rule.Register(ruleId)
+		rules[ruleId] = rule
+		c.JSON(200, gin.H{
+			"code":    0,
+			"message": "ok",
+		})
+		return
 	})
 	err := r.Run(Config.Listen)
 	if err != nil {
