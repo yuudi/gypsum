@@ -28,14 +28,14 @@ type Config struct {
 }
 
 const defaultConfig = `
-Host = "127.0.0.1"
-Port = 6700
-AccessToken = ""
+Host = "127.0.0.1"  # 正向 ws 服务端主机
+Port = 6700  # 正向 ws 服务端端口
+AccessToken = ""  # 正向 ws 令牌码
 
 [Gypsum]
-Listen = "0.0.0.0:9900"
-Username = "admin"
-Password = "set-your-password-here"
+Listen = "0.0.0.0:9900"  # 网页控制台监听地址与端口
+Username = "admin"  # 控制台账号
+Password = "set-your-password-here"  # 控制台密码
 `
 
 func main() {

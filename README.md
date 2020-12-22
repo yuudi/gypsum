@@ -12,7 +12,7 @@ gypsum 是受到 [铃心自定义](http://myepk.club/) 的启发，基于 [ZeroB
 
 1. 修改 `onebot` 的配置文件，启用`正向ws`
 1. 启动一次 `gypsum`，生成 `gypsum_config.toml` 配置文件
-1. 向 `gypsum_config.toml` 配置文件中填写
+1. 向 `gypsum_config.toml` 配置文件中填写`正向ws`连接参数、网页端口、账号、密码
 1. 启动 `onebot` ，再启动 `gypsum`
 1. 打开 `<你的ip地址>:9900`，开始使用
 
@@ -20,9 +20,9 @@ gypsum 是受到 [铃心自定义](http://myepk.club/) 的启发，基于 [ZeroB
 
 - [x] 修改删除规则
 - [x] 鉴权
-- [ ] 通知事件
-- [ ] 定时器
-- [ ] 写前端
+- [x] 通知事件
+- [ ] 定时任务
+- [ ] 前端
 - [ ] 接口文档
 - [ ] 自动更新
 - [ ] 更强大的回复模板
