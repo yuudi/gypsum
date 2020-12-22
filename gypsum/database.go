@@ -1,11 +1,10 @@
 package gypsum
 
 import (
-	"log"
-
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
+	"log"
 )
 
 var db *leveldb.DB
@@ -29,10 +28,22 @@ func initDb() (err error) {
 	return
 }
 
-func loadData() (err error) {
-	iter := db.NewIterator(util.BytesPrefix([]byte("gypsum-rules-")), nil)
+func loadData() error {
+	loadRules()
+	loadTriggers()
+	return nil
+}
+
+func loadRules() {
 	rules = make(map[uint64]Rule)
 	zeroMatcher = make(map[uint64]*zero.Matcher)
+	iter := db.NewIterator(util.BytesPrefix([]byte("gypsum-rules-")), nil)
+	defer func() {
+		iter.Release()
+		if err := iter.Error(); err != nil {
+			log.Printf("载入数据错误：%s", err)
+		}
+	}()
 	for iter.Next() {
 		key := ToUint(iter.Key()[13:])
 		value := iter.Value()
@@ -47,7 +58,30 @@ func loadData() (err error) {
 			continue
 		}
 	}
-	iter.Release()
-	err = iter.Error()
-	return
+}
+
+func loadTriggers() {
+	triggers = make(map[uint64]Trigger)
+	zeroTrigger = make(map[uint64]*zero.Matcher)
+	iter := db.NewIterator(util.BytesPrefix([]byte("gypsum-triggers-")), nil)
+	defer func() {
+		iter.Release()
+		if err := iter.Error(); err != nil {
+			log.Printf("载入数据错误：%s", err)
+		}
+	}()
+	for iter.Next() {
+		key := ToUint(iter.Key()[16:])
+		value := iter.Value()
+		t, e := TriggerFromByte(value)
+		if e != nil {
+			log.Printf("无法加载规则%d：%s", key, e)
+			continue
+		}
+		triggers[key] = *t
+		if e := t.Register(key); e != nil {
+			log.Printf("无法注册规则%d：%s", key, e)
+			continue
+		}
+	}
 }

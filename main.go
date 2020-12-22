@@ -8,7 +8,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 	zero "github.com/wdvxdr1123/ZeroBot"
-	gypsum "github.com/yuudi/gypsum/gypsum"
+	"github.com/yuudi/gypsum/gypsum"
 )
 
 var (

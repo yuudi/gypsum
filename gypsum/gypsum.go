@@ -26,7 +26,7 @@ func (_ *gypsumPlugin) GetPluginInfo() zero.PluginInfo { // 返回插件信息
 	return zero.PluginInfo{
 		Author:     "yuudi",
 		PluginName: "石膏自定义",
-		Version:    "0.2.0-alpha.1",
+		Version:    "0.2.0",
 		Details:    "石膏自定义",
 	}
 }
@@ -40,5 +40,5 @@ func (_ *gypsumPlugin) Start() { // 插件主体
 		log.Printf("数据库加载错误：%s", err)
 		return
 	}
-	go serve()
+	go serveWeb()
 }

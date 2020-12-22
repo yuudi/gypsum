@@ -2,31 +2,33 @@
 
 base path: `/api/v1`
 
-对象结构：规则
+## 消息规则
 
-| 字段         | 类型          | 含义                                                                               |
-| ------------ | ------------- | ---------------------------------------------------------------------------------- |
-| group_id     | integar       | 匹配群，`0`表示所有                                                                |
-| user_id      | integar       | 匹配 QQ 号，`0`表示所有                                                            |
-| matcher_type | integar       | 匹配方式，0 完全匹配，1 关键词匹配，1 前缀匹配，3 后缀匹配，4 命令匹配，5 正则匹配 |
+对象结构：消息规则
+
+| 字段         | 类型            | 含义                                                                               |
+| ------------ | --------------- | ---------------------------------------------------------------------------------- |
+| group_id     | integer         | 匹配群，`0`表示所有                                                                |
+| user_id      | integer         | 匹配 QQ 号，`0`表示所有                                                            |
+| matcher_type | integer         | 匹配方式，0 完全匹配，1 关键词匹配，1 前缀匹配，3 后缀匹配，4 命令匹配，5 正则匹配 |
 | patterns     | array\<string\> | 匹配表达式的数组                                                                   |
-| response     | string        | 回复模板                                                                           |
-| priority     | integar       | 优先级                                                                             |
-| block        | boolean       | 是否阻止后续规则                                                                   |
+| response     | string          | 回复模板                                                                           |
+| priority     | integer         | 优先级                                                                             |
+| block        | boolean         | 是否阻止后续规则                                                                   |
 
-## 列出所有规则
+### 列出所有规则
 
 GET `/rules`
 
 返回一个对象，key 是整数（即`rule_id`，不一定连续），value 是规则
 
-## 查看规则
+### 查看规则
 
 GET `/rules/{rule_id}`
 
 返回一个规则
 
-## 添加规则
+### 添加规则
 
 POST `/rules`
 
@@ -34,16 +36,65 @@ POST `/rules`
 
 返回 `status 201` `code=0`
 
-## 删除规则
+### 删除规则
 
 DELETE `/rules/{rule_id}`
 
 返回 `code=0`
 
-## 修改规则
+### 修改规则
 
 PUT `/rules/{rule_id}`
 
 请求体为一条规则
 
 返回 `code=0`
+
+## 触发事件
+
+对象结构：事件规则
+
+| 字段         | 类型    | 含义                                                              |
+| ------------ | ------- | ----------------------------------------------------------------- |
+| group_id     | integer | 匹配群，`0`表示所有                                               |
+| user_id      | integer | 匹配 QQ 号，`0`表示所有                                           |
+| trigger_type | string  | 触发事件，具体见<a href="javascript:alert('咕咕咕')">模板文档</a> |
+| response     | string  | 回复模板                                                          |
+| priority     | integer | 优先级                                                            |
+| block        | boolean | 是否阻止后续规则                                                  |
+
+### 列出所有事件规则
+
+GET `/triggers`
+
+返回一个对象，key 是整数（即`trigger_id`，不一定连续），value 是规则
+
+### 查看事件规则
+
+GET `/triggers/{trigger_id}`
+
+返回一个规则
+
+### 添加事件规则
+
+POST `/triggers`
+
+请求体为一条规则
+
+返回 `status 201` `code=0`
+
+### 删除事件规则
+
+DELETE `/triggers/{trigger_id}`
+
+返回 `code=0`
+
+### 修改事件规则
+
+PUT `/triggers/{trigger_id}`
+
+请求体为一条规则
+
+返回 `code=0`
+
+## 定时任务
