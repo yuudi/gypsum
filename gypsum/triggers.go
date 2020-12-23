@@ -4,18 +4,20 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"github.com/gin-gonic/gin"
 	"log"
 	"strconv"
 	"strings"
 
 	"github.com/flosch/pongo2"
+	"github.com/gin-gonic/gin"
+	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
 )
 
 type TriggerCategory int
 
 type Trigger struct {
+	Active      bool   `json:"active"`
 	GroupID     int64  `json:"group_id"`
 	UserID      int64  `json:"user_id"`
 	TriggerType string `json:"trigger_type"`
@@ -39,7 +41,15 @@ func (t *Trigger) ToBytes() ([]byte, error) {
 }
 
 func TriggerFromByte(b []byte) (*Trigger, error) {
-	t := &Trigger{}
+	t := &Trigger{
+		Active:      true,
+		GroupID:     0,
+		UserID:      0,
+		TriggerType: "",
+		Response:    "",
+		Priority:    50,
+		Block:       true,
+	}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
 	decoder := gob.NewDecoder(&buffer)
@@ -88,20 +98,46 @@ func templateTriggerHandler(tmpl pongo2.Template) zero.Handler {
 	}
 }
 
+func loadTriggers() {
+	triggers = make(map[uint64]Trigger)
+	zeroTrigger = make(map[uint64]*zero.Matcher)
+	iter := db.NewIterator(util.BytesPrefix([]byte("gypsum-triggers-")), nil)
+	defer func() {
+		iter.Release()
+		if err := iter.Error(); err != nil {
+			log.Printf("载入数据错误：%s", err)
+		}
+	}()
+	for iter.Next() {
+		key := ToUint(iter.Key()[16:])
+		value := iter.Value()
+		t, e := TriggerFromByte(value)
+		if e != nil {
+			log.Printf("无法加载规则%d：%s", key, e)
+			continue
+		}
+		triggers[key] = *t
+		if e := t.Register(key); e != nil {
+			log.Printf("无法注册规则%d：%s", key, e)
+			continue
+		}
+	}
+}
+
 func getTriggers(c *gin.Context) {
 	c.JSON(200, triggers)
 }
 
-func getTriggerById(c *gin.Context) {
-	triggerIdStr := c.Param("tid")
-	triggerId, err := strconv.ParseUint(triggerIdStr, 10, 64)
+func getTriggerByID(c *gin.Context) {
+	triggerIDStr := c.Param("tid")
+	triggerID, err := strconv.ParseUint(triggerIDStr, 10, 64)
 	if err != nil {
 		c.JSON(404, gin.H{
 			"code":    1000,
 			"message": "no such trigger",
 		})
 	} else {
-		t, ok := triggers[triggerId]
+		t, ok := triggers[triggerID]
 		if ok {
 			c.JSON(200, t)
 		} else {
@@ -161,41 +197,8 @@ func createTrigger(c *gin.Context) {
 }
 
 func deleteTrigger(c *gin.Context) {
-	triggerIdStr := c.Param("tid")
-	triggerId, err := strconv.ParseUint(triggerIdStr, 10, 64)
-	if err != nil {
-		c.JSON(404, gin.H{
-			"code":    1000,
-			"message": "no such trigger",
-		})
-	} else {
-		_, ok := triggers[triggerId]
-		if ok {
-			delete(triggers, triggerId)
-			if err := db.Delete(append([]byte("gypsum-triggers-"), ToBytes(triggerId)...), nil); err != nil {
-				c.JSON(500, gin.H{
-					"code":    3001,
-					"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-				})
-				return
-			}
-			zeroTrigger[triggerId].Delete()
-			c.JSON(200, gin.H{
-				"code":    0,
-				"message": "deleted",
-			})
-		} else {
-			c.JSON(404, gin.H{
-				"code":    1000,
-				"message": "no such trigger",
-			})
-		}
-	}
-}
-
-func modifyTrigger(c *gin.Context) {
-	triggerIdStr := c.Param("tid")
-	triggerId, err := strconv.ParseUint(triggerIdStr, 10, 64)
+	triggerIDStr := c.Param("tid")
+	triggerID, err := strconv.ParseUint(triggerIDStr, 10, 64)
 	if err != nil {
 		c.JSON(404, gin.H{
 			"code":    1000,
@@ -203,7 +206,40 @@ func modifyTrigger(c *gin.Context) {
 		})
 		return
 	}
-	_, ok := triggers[triggerId]
+	_, ok := triggers[triggerID]
+	if ok {
+		delete(triggers, triggerID)
+		if err := db.Delete(append([]byte("gypsum-triggers-"), ToBytes(triggerID)...), nil); err != nil {
+			c.JSON(500, gin.H{
+				"code":    3001,
+				"message": fmt.Sprintf("Server got itself into trouble: %s", err),
+			})
+			return
+		}
+		zeroTrigger[triggerID].Delete()
+		c.JSON(200, gin.H{
+			"code":    0,
+			"message": "deleted",
+		})
+		return
+	}
+	c.JSON(404, gin.H{
+		"code":    1000,
+		"message": "no such trigger",
+	})
+}
+
+func modifyTrigger(c *gin.Context) {
+	triggerIDStr := c.Param("tid")
+	triggerID, err := strconv.ParseUint(triggerIDStr, 10, 64)
+	if err != nil {
+		c.JSON(404, gin.H{
+			"code":    1000,
+			"message": "no such trigger",
+		})
+		return
+	}
+	_, ok := triggers[triggerID]
 	if !ok {
 		c.JSON(404, gin.H{
 			"code":    100,
@@ -227,8 +263,8 @@ func modifyTrigger(c *gin.Context) {
 		})
 		return
 	}
-	matcher := zeroTrigger[triggerId]
-	if err := trigger.Register(triggerId); err != nil {
+	matcher := zeroTrigger[triggerID]
+	if err := trigger.Register(triggerID); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2001,
 			"message": fmt.Sprintf("trigger error: %s", err),
@@ -236,14 +272,14 @@ func modifyTrigger(c *gin.Context) {
 		return
 	}
 	matcher.Delete()
-	if err := db.Put(append([]byte("gypsum-triggers-"), ToBytes(triggerId)...), v, nil); err != nil {
+	if err := db.Put(append([]byte("gypsum-triggers-"), ToBytes(triggerID)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3002,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
 		})
 		return
 	}
-	triggers[triggerId] = trigger
+	triggers[triggerID] = trigger
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "ok",

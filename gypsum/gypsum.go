@@ -2,6 +2,7 @@ package gypsum
 
 import (
 	"log"
+	"os"
 
 	zero "github.com/wdvxdr1123/ZeroBot"
 )
@@ -26,7 +27,7 @@ func (_ *gypsumPlugin) GetPluginInfo() zero.PluginInfo { // 返回插件信息
 	return zero.PluginInfo{
 		Author:     "yuudi",
 		PluginName: "石膏自定义",
-		Version:    "0.2.0",
+		Version:    "v" + os.Getenv("GYPSUM_VERSION"),
 		Details:    "石膏自定义",
 	}
 }

@@ -8,6 +8,7 @@
 	<script>
 		function getForm() {
 			let obj = {};
+			obj.activate = $("input[name='activate']:checked").val() == "true";
 			obj.group_id = $("#group_id")[0].valueAsNumber;
 			obj.user_id = $("#user_id")[0].valueAsNumber;
 			obj.trigger_type = $("#trigger_type")[0].value;
@@ -49,6 +50,8 @@
 	<br /><br />
 	<div>
 		<form>
+			<input type="radio" name="activate" value="true" checked>启用
+			<input type="radio" name="activate" value="false">暂停<br />
 			群号: <input id="group_id" type="number">（全部则填0）<br />
 			QQ号: <input id="user_id" type="number">（全部则填0）<br />
 			种类:

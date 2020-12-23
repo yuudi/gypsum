@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>测试主页</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+	<script>
+		function getForm() {
+			let obj = {};
+			obj.activate = $("input[name='activate']:checked").val() == "true";
+			obj.group_id = [$("#group_id")[0].valueAsNumber];
+			obj.user_id = [];
+			obj.once = $("#once")[0].checked;
+			obj.cron_spec = $("#cron_spec")[0].value;
+			obj.action = $("#action")[0].value;
+			return obj;
+		}
+		$(document).ready(function () {
+			alert("此页面仅供测试，未作输入验证，任何非法输入都可能导致程序崩溃");
+			$("#add_job").click(function () {
+				$.post({
+					url: "/api/v1/jobs",
+					data: JSON.stringify(getForm()),
+					contentType: 'application/json',
+				}).done(function (data) {
+					alert(JSON.stringify(data));
+				})
+			});
+			$("#delete_job").click(function () {
+				let job_id = $("#job_id")[0].valueAsNumber;
+				$.ajax({
+					url: "/api/v1/jobs/" + job_id,
+					type: "DELETE",
+					success: function (result) {
+						alert(JSON.stringify(result));
+					}
+				});
+			});
+		});
+	</script>
+</head>
+<body>
+	<h1>测试主页</h1>
+	<div>
+		<a href="/api/v1/jobs" target="_blank">查看所有任务</a>
+	</div>
+	<br /><br />
+	<div>
+		<form>
+			<input type="radio" name="activate" value="true" checked>启用
+			<input type="radio" name="activate" value="false">暂停<br />
+			群号: <input id="group_id" type="number"><br />
+			QQ号: <input id="user_id" type="number" placeholder="暂时不可用" disabled><br />
+			一次性任务: <input id="once" type="checkbox"><br />
+			计划表达式: <input id="cron_spec"> <a href="javascript:alert('敬请期待')">表达式生成器</a><br />
+			任务模板: <textarea id="action" cols="60" rows="5"></textarea><br />
+		</form>
+		<button id="add_job">新增任务</button>
+	</div>
+	<br /><br />
+	<div>
+		任务号: <input id="job_id" type="number">
+		<button id="delete_job">删除任务</button>
+	</div>
+</body>
+</html>
