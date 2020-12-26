@@ -86,6 +86,9 @@ func (j *Job) Executor() (func(), *uint64, error) {
 }
 
 func (j *Job) Register(id uint64) error {
+	if !j.Active {
+		return nil
+	}
 	exe, jobID, err := j.Executor()
 	if err != nil {
 		return err
@@ -218,7 +221,7 @@ func deleteJob(c *gin.Context) {
 		})
 		return
 	}
-	entry, ok := entries[jobID]
+	job, ok := jobs[jobID]
 	if !ok {
 		c.JSON(404, gin.H{
 			"code":    1000,
@@ -234,7 +237,9 @@ func deleteJob(c *gin.Context) {
 		})
 		return
 	}
-	scheduler.Remove(entry)
+	if job.Active {
+		scheduler.Remove(entries[jobID])
+	}
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "deleted",
@@ -252,7 +257,7 @@ func modifyJob(c *gin.Context) {
 		})
 		return
 	}
-	entry, ok := entries[jobID]
+	oldJob, ok := jobs[jobID]
 	if !ok {
 		c.JSON(404, gin.H{
 			"code":    100,
@@ -260,8 +265,8 @@ func modifyJob(c *gin.Context) {
 		})
 		return
 	}
-	var job Job
-	if err := c.BindJSON(&job); err != nil {
+	var newJob Job
+	if err := c.BindJSON(&newJob); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
 			"message": fmt.Sprintf("converting error: %s", err),
@@ -269,7 +274,7 @@ func modifyJob(c *gin.Context) {
 		return
 	}
 	// check spec syntax
-	_, err = specParser.Parse(job.CronSpec)
+	_, err = specParser.Parse(newJob.CronSpec)
 	if err != nil {
 		c.JSON(422, gin.H{
 			"code":    2010,
@@ -277,7 +282,7 @@ func modifyJob(c *gin.Context) {
 		})
 		return
 	}
-	v, err := job.ToBytes()
+	v, err := newJob.ToBytes()
 	if err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
@@ -285,8 +290,10 @@ func modifyJob(c *gin.Context) {
 		})
 		return
 	}
-	scheduler.Remove(entry)
-	if err := job.Register(jobID); err != nil {
+	if oldJob.Active {
+		scheduler.Remove(entries[jobID])
+	}
+	if err := newJob.Register(jobID); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2001,
 			"message": fmt.Sprintf("job error: %s", err),
@@ -300,7 +307,7 @@ func modifyJob(c *gin.Context) {
 		})
 		return
 	}
-	jobs[jobID] = job
+	jobs[jobID] = newJob
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "ok",

@@ -127,6 +127,9 @@ func userRule(userID int64) zero.Rule {
 }
 
 func (h *Rule) Register(id uint64) error {
+	if !h.Active {
+		return nil
+	}
 	tmpl, err := pongo2.FromString(h.Response)
 	if err != nil {
 		log.Printf("模板预处理出错：%s", err)
@@ -278,27 +281,30 @@ func deleteRule(c *gin.Context) {
 		})
 		return
 	}
-	_, ok := rules[ruleID]
-	if ok {
-		delete(rules, ruleID)
-		if err := db.Delete(append([]byte("gypsum-rules-"), ToBytes(ruleID)...), nil); err != nil {
-			c.JSON(500, gin.H{
-				"code":    3001,
-				"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-			})
-			return
-		}
-		zeroMatcher[ruleID].Delete()
-		c.JSON(200, gin.H{
-			"code":    0,
-			"message": "deleted",
+	oldRule, ok := rules[ruleID]
+	if !ok {
+		c.JSON(404, gin.H{
+			"code":    1000,
+			"message": "no such rule",
 		})
 		return
 	}
-	c.JSON(404, gin.H{
-		"code":    1000,
-		"message": "no such rule",
+	delete(rules, ruleID)
+	if err := db.Delete(append([]byte("gypsum-rules-"), ToBytes(ruleID)...), nil); err != nil {
+		c.JSON(500, gin.H{
+			"code":    3001,
+			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
+		})
+		return
+	}
+	if oldRule.Active {
+		zeroMatcher[ruleID].Delete()
+	}
+	c.JSON(200, gin.H{
+		"code":    0,
+		"message": "deleted",
 	})
+	return
 
 }
 
@@ -312,7 +318,7 @@ func modifyRule(c *gin.Context) {
 		})
 		return
 	}
-	_, ok := rules[ruleID]
+	oldRule, ok := rules[ruleID]
 	if !ok {
 		c.JSON(404, gin.H{
 			"code":    100,
@@ -320,15 +326,15 @@ func modifyRule(c *gin.Context) {
 		})
 		return
 	}
-	var rule Rule
-	if err := c.BindJSON(&rule); err != nil {
+	var newRule Rule
+	if err := c.BindJSON(&newRule); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
 			"message": fmt.Sprintf("converting error: %s", err),
 		})
 		return
 	}
-	v, err := rule.ToBytes()
+	v, err := newRule.ToBytes()
 	if err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
@@ -336,15 +342,24 @@ func modifyRule(c *gin.Context) {
 		})
 		return
 	}
-	matcher := zeroMatcher[ruleID]
-	if err := rule.Register(ruleID); err != nil {
+	oldMatcher, ok := zeroMatcher[ruleID]
+	if err := newRule.Register(ruleID); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2001,
 			"message": fmt.Sprintf("rule error: %s", err),
 		})
 		return
 	}
-	matcher.Delete()
+	if oldRule.Active {
+		if !ok {
+			c.JSON(500, gin.H{
+				"code":    7012,
+				"message": "error when delete old rule: matcher not found",
+			})
+			return
+		}
+		oldMatcher.Delete()
+	}
 	if err := db.Put(append([]byte("gypsum-rules-"), ToBytes(ruleID)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3002,
@@ -352,7 +367,7 @@ func modifyRule(c *gin.Context) {
 		})
 		return
 	}
-	rules[ruleID] = rule
+	rules[ruleID] = newRule
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "ok",

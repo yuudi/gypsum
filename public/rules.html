@@ -7,8 +7,8 @@
 	<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
 	<script>
 		function getForm() {
-			let obj = {};
-			obj.activate = $("input[name='activate']:checked").val() == "true";
+			let obj = {message_type:0xffffffff};
+			obj.active = $("input[name='active']:checked").val() == "true";
 			obj.group_id = $("#group_id")[0].valueAsNumber;
 			obj.user_id = $("#user_id")[0].valueAsNumber;
 			obj.matcher_type = $("#matcher_type")[0].valueAsNumber;
@@ -51,8 +51,8 @@
 	<br /><br />
 	<div>
 		<form>
-			<input type="radio" name="activate" value="true" checked>启用
-			<input type="radio" name="activate" value="false">暂停<br />
+			<input type="radio" name="active" value="true" checked>启用
+			<input type="radio" name="active" value="false">暂停<br />
 			群号: <input id="group_id" type="number">（全部则填0）<br />
 			QQ号: <input id="user_id" type="number">（全部则填0）<br />
 			种类:

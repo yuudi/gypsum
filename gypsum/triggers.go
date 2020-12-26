@@ -70,6 +70,9 @@ func noticeRule(noticeType string) zero.Rule {
 }
 
 func (t *Trigger) Register(id uint64) error {
+	if !t.Active {
+		return nil
+	}
 	tmpl, err := pongo2.FromString(t.Response)
 	if err != nil {
 		log.Printf("模板预处理出错：%s", err)
@@ -206,7 +209,7 @@ func deleteTrigger(c *gin.Context) {
 		})
 		return
 	}
-	_, ok := triggers[triggerID]
+	oldTrigger, ok := triggers[triggerID]
 	if ok {
 		delete(triggers, triggerID)
 		if err := db.Delete(append([]byte("gypsum-triggers-"), ToBytes(triggerID)...), nil); err != nil {
@@ -216,7 +219,9 @@ func deleteTrigger(c *gin.Context) {
 			})
 			return
 		}
-		zeroTrigger[triggerID].Delete()
+		if oldTrigger.Active {
+			zeroTrigger[triggerID].Delete()
+		}
 		c.JSON(200, gin.H{
 			"code":    0,
 			"message": "deleted",
@@ -239,7 +244,7 @@ func modifyTrigger(c *gin.Context) {
 		})
 		return
 	}
-	_, ok := triggers[triggerID]
+	oldTrigger, ok := triggers[triggerID]
 	if !ok {
 		c.JSON(404, gin.H{
 			"code":    100,
@@ -247,15 +252,15 @@ func modifyTrigger(c *gin.Context) {
 		})
 		return
 	}
-	var trigger Trigger
-	if err := c.BindJSON(&trigger); err != nil {
+	var newTrigger Trigger
+	if err := c.BindJSON(&newTrigger); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
 			"message": fmt.Sprintf("converting error: %s", err),
 		})
 		return
 	}
-	v, err := trigger.ToBytes()
+	v, err := newTrigger.ToBytes()
 	if err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
@@ -263,15 +268,24 @@ func modifyTrigger(c *gin.Context) {
 		})
 		return
 	}
-	matcher := zeroTrigger[triggerID]
-	if err := trigger.Register(triggerID); err != nil {
+	oldMatcher, ok := zeroTrigger[triggerID]
+	if err := newTrigger.Register(triggerID); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2001,
 			"message": fmt.Sprintf("trigger error: %s", err),
 		})
 		return
 	}
-	matcher.Delete()
+	if oldTrigger.Active {
+		if !ok {
+			c.JSON(500, gin.H{
+				"code":    7012,
+				"message": "error when delete old rule: matcher not found",
+			})
+			return
+		}
+		oldMatcher.Delete()
+	}
 	if err := db.Put(append([]byte("gypsum-triggers-"), ToBytes(triggerID)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3002,
@@ -279,7 +293,7 @@ func modifyTrigger(c *gin.Context) {
 		})
 		return
 	}
-	triggers[triggerID] = trigger
+	triggers[triggerID] = newTrigger
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "ok",

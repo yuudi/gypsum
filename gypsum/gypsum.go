@@ -33,6 +33,10 @@ func (_ *gypsumPlugin) GetPluginInfo() zero.PluginInfo { // 返回插件信息
 }
 
 func (_ *gypsumPlugin) Start() { // 插件主体
+	if err := initTemplating(); err != nil {
+		log.Printf("lua引擎初始化错误：%s", err)
+		return
+	}
 	if err := initDb(); err != nil {
 		log.Printf("数据库初始化错误：%s", err)
 		return

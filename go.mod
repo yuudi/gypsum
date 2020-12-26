@@ -12,5 +12,6 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/wdvxdr1123/ZeroBot v0.0.0-20201225035957-a0379f34164a
+	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 )
