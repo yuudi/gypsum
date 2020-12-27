@@ -1,4 +1,4 @@
-name: publish-binary
+name: ci
 
 on:
   push:
@@ -12,7 +12,7 @@ on:
   workflow_dispatch: {}
 
 jobs:
-  releases-binary:
+  ci:
     name: Release Go Binary
     runs-on: ubuntu-latest
 
@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           Publish=""
-          if [ "${{ github.event_name }}" -ne "push" ]; then Publish="--skip-publish"; fi
+          if [ "${{ github.event_name }}" != "push" ]; then Publish="--skip-publish"; fi
           echo "::set-output name=PUBLISH::${Publish} "
 
       - name: Run GoReleaser

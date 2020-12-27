@@ -2,10 +2,11 @@ package luatag
 
 import (
 	"bytes"
-	"log"
 
 	"github.com/flosch/pongo2"
+	log "github.com/sirupsen/logrus"
 	"github.com/yuin/gopher-lua"
+	luajson "layeh.com/gopher-json"
 )
 
 type tagLuaNode struct {
@@ -14,31 +15,34 @@ type tagLuaNode struct {
 
 func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
 	b := bytes.NewBuffer(make([]byte, 0, 1024)) // 1 KiB
-	err := node.wrapper.Execute(ctx, b)
-	if err != nil {
+	if err := node.wrapper.Execute(ctx, b); err != nil {
 		return err
 	}
 	s := b.String()
 
-	L := lua.NewState()
-	var luaVar *lua.LTable
-	c, ok := ctx.Shared["luavar"]
-	if !ok {
-		luaVar = L.NewTable()
-		if ctx.Shared == nil {
-			ctx.Shared = make(pongo2.Context)
-		}
-		ctx.Shared["luavar"] = luaVar
-	} else {
-		luaVar, ok = c.(*lua.LTable)
+	L := ctx.Public["_lua"].(*lua.LState)
+	if L == nil {
+		L = lua.NewState()
+		// the close function are called by executor caller
+
+		luajson.Preload(L)
+		var luaEvent lua.LValue
+		event, ok := ctx.Public["json_event"]
 		if !ok {
-			log.Printf("lua execution error: cannot resume lua context from pongo2 context")
-			return nil
+			luaEvent = lua.LNil
+		} else {
+			var err error
+			luaEvent, err = luajson.Decode(L, []byte(*event.(*string)))
+			if err != nil {
+				log.Printf("lua execution error: cannot resume lua event from pongo2 context")
+				return nil
+			}
 		}
+		L.SetGlobal("write", L.NewFunction(Writer(writer)))
+		L.SetGlobal("event", luaEvent)
+		L.SetGlobal("botapi",L.NewFunction(botApi))
+		ctx.Public["_lua"]=L
 	}
-	L.SetGlobal("write", L.NewFunction(Writer(writer)))
-	L.SetGlobal("var", luaVar)
-	defer L.Close()
 	if err := L.DoString(s); err != nil {
 		log.Printf("lua execution error: %s", err)
 		return nil

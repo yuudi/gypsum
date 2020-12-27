@@ -13,6 +13,7 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
+	lua "github.com/yuin/gopher-lua"
 )
 
 type TriggerCategory int
@@ -62,11 +63,11 @@ func noticeRule(noticeType string) zero.Rule {
 	ntype := strings.SplitN(noticeType, "/", 2)
 	if len(ntype) == 1 {
 		return func(event *zero.Event, _ zero.State) bool {
-			return event.NoticeType == ntype[0]
+			return event.NoticeType == ntype[0] || event.RequestType == ntype[0]
 		}
 	}
 	return func(event *zero.Event, _ zero.State) bool {
-		return event.NoticeType == ntype[0] && event.SubType == ntype[1]
+		return (event.NoticeType == ntype[0] || event.RequestType == ntype[0]) && event.SubType == ntype[1]
 	}
 }
 
@@ -85,16 +86,41 @@ func (t *Trigger) Register(id uint64) error {
 
 func templateTriggerHandler(tmpl pongo2.Template) zero.Handler {
 	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
+		var luaState *lua.LState
+		defer func() {
+			if luaState!=nil{
+				luaState.Close()
+			}
+		}()
 		reply, err := tmpl.Execute(pongo2.Context{
 			"matcher": matcher,
 			"state":   state,
 			"event": func() interface{} {
 				e := make(map[string]interface{})
-				if err := jsoniter.Unmarshal(event.RawEvent, &e); err != nil {
+				if err := jsoniter.UnmarshalFromString(event.RawEvent.Raw, &e); err != nil {
 					log.Printf("error when decode event json: %s", err)
 				}
 				return e
 			},
+			"at_sender": func() string {
+				if event.GroupID == 0 {
+					log.Printf("cannot at sender in event %s/%s", event.PostType, event.SubType)
+					return ""
+				}
+				return fmt.Sprintf("[CQ:at,qq=%d]", event.UserID)
+			},
+			"approve": func() {
+				if event.PostType != "request" {
+					log.Printf("cannot approve: event is not a request: %#v", event)
+				}
+				switch event.RequestType {
+				case "friend":
+					zero.SetFriendAddRequest(event.Flag, true, "")
+				case "group":
+					zero.SetGroupAddRequest(event.Flag, event.SubType, true, "")
+				}
+			},
+			"_lua":luaState,
 		})
 		if err != nil {
 			log.Printf("渲染模板出错：%s", err)
@@ -169,7 +195,7 @@ func createTrigger(c *gin.Context) {
 		return
 	}
 	cursor++
-	if err := db.Put([]byte("gypsum-$meta-cursor"), ToBytes(cursor), nil); err != nil {
+	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -191,7 +217,7 @@ func createTrigger(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put(append([]byte("gypsum-triggers-"), ToBytes(cursor)...), v, nil); err != nil {
+	if err := db.Put(append([]byte("gypsum-triggers-"), U64ToBytes(cursor)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -200,8 +226,8 @@ func createTrigger(c *gin.Context) {
 	}
 	triggers[cursor] = trigger
 	c.JSON(201, gin.H{
-		"code":    0,
-		"message": "ok",
+		"code":       0,
+		"message":    "ok",
 		"trigger_id": cursor,
 	})
 	return
@@ -220,7 +246,7 @@ func deleteTrigger(c *gin.Context) {
 	oldTrigger, ok := triggers[triggerID]
 	if ok {
 		delete(triggers, triggerID)
-		if err := db.Delete(append([]byte("gypsum-triggers-"), ToBytes(triggerID)...), nil); err != nil {
+		if err := db.Delete(append([]byte("gypsum-triggers-"), U64ToBytes(triggerID)...), nil); err != nil {
 			c.JSON(500, gin.H{
 				"code":    3001,
 				"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -294,7 +320,7 @@ func modifyTrigger(c *gin.Context) {
 		}
 		oldMatcher.Delete()
 	}
-	if err := db.Put(append([]byte("gypsum-triggers-"), ToBytes(triggerID)...), v, nil); err != nil {
+	if err := db.Put(append([]byte("gypsum-triggers-"), U64ToBytes(triggerID)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3002,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

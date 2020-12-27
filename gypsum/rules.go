@@ -3,16 +3,18 @@ package gypsum
 import (
 	"bytes"
 	"encoding/gob"
+	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
+	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
+	lua "github.com/yuin/gopher-lua"
 )
 
 type RuleType int
@@ -148,40 +150,58 @@ func (h *Rule) Register(id uint64) error {
 	if h.OnlyAtMe {
 		rules = append(rules, zero.OnlyToMe)
 	}
+	var msgRule zero.Rule
 	switch h.MatcherType {
 	case FullMatch:
-		zeroMatcher[id] = zero.OnFullMatchGroup(h.Patterns, rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		msgRule = zero.FullMatchRule(h.Patterns...)
 	case Keyword:
-		zeroMatcher[id] = zero.OnKeywordGroup(h.Patterns, rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		msgRule = zero.KeywordRule(h.Patterns...)
 	case Prefix:
-		zeroMatcher[id] = zero.OnPrefixGroup(h.Patterns, rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		msgRule = zero.PrefixRule(h.Patterns...)
 	case Suffix:
-		zeroMatcher[id] = zero.OnSuffixGroup(h.Patterns, rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		msgRule = zero.SuffixRule(h.Patterns...)
 	case Command:
-		zeroMatcher[id] = zero.OnCommandGroup(h.Patterns, rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		msgRule = zero.CommandRule(h.Patterns...)
 	case Regex:
-		zeroMatcher[id] = zero.OnRegex(h.Patterns[0], rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		msgRule = zero.RegexRule(h.Patterns[0])
 	default:
-		log.Printf("Unknown type %d", h.MatcherType)
+		log.Printf("Unknown type %#v", h.MatcherType)
+		return errors.New(fmt.Sprintf("Unknown type %#v", h.MatcherType))
 	}
+	zeroMatcher[id] = zero.OnMessage(append(rules, msgRule)...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
 	return nil
 }
 
 func templateRuleHandler(tmpl pongo2.Template) zero.Handler {
 	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
+		var luaState *lua.LState
+		defer func() {
+			if luaState!=nil{
+				luaState.Close()
+			}
+		}()
 		reply, err := tmpl.Execute(pongo2.Context{
 			"matcher": matcher,
 			"state":   state,
 			"event": func() interface{} {
 				e := make(map[string]interface{})
-				if err := jsoniter.Unmarshal(event.RawEvent, &e); err != nil {
+				if err := jsoniter.UnmarshalFromString(event.RawEvent.Raw, &e); err != nil {
 					log.Printf("error when decode event json: %s", err)
 				}
 				return e
 			},
+			"json_event": &event.RawEvent.Raw,
+			"at_sender": func() string {
+				if event.GroupID == 0 {
+					log.Printf("cannot at sender in event %s/%s", event.PostType, event.SubType)
+					return ""
+				}
+				return fmt.Sprintf("[CQ:at,qq=%d]", event.UserID)
+			},
+			"_lua":luaState,
 		})
 		if err != nil {
-			log.Printf("渲染模板出错：%s", err)
+			log.Printf("error when rendering template：%s", err)
 			return zero.FinishResponse
 		}
 		reply = strings.TrimSpace(reply)
@@ -253,7 +273,7 @@ func createRule(c *gin.Context) {
 		return
 	}
 	cursor++
-	if err := db.Put([]byte("gypsum-$meta-cursor"), ToBytes(cursor), nil); err != nil {
+	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -275,7 +295,7 @@ func createRule(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put(append([]byte("gypsum-rules-"), ToBytes(cursor)...), v, nil); err != nil {
+	if err := db.Put(append([]byte("gypsum-rules-"), U64ToBytes(cursor)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -310,7 +330,7 @@ func deleteRule(c *gin.Context) {
 		return
 	}
 	delete(rules, ruleID)
-	if err := db.Delete(append([]byte("gypsum-rules-"), ToBytes(ruleID)...), nil); err != nil {
+	if err := db.Delete(append([]byte("gypsum-rules-"), U64ToBytes(ruleID)...), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3001,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -380,7 +400,7 @@ func modifyRule(c *gin.Context) {
 		}
 		oldMatcher.Delete()
 	}
-	if err := db.Put(append([]byte("gypsum-rules-"), ToBytes(ruleID)...), v, nil); err != nil {
+	if err := db.Put(append([]byte("gypsum-rules-"), U64ToBytes(ruleID)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3002,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

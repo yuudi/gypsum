@@ -13,6 +13,7 @@ import (
 	"github.com/robfig/cron/v3"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
+	lua "github.com/yuin/gopher-lua"
 )
 
 type Job struct {
@@ -64,13 +65,21 @@ func (j *Job) Executor() (func(), *uint64, error) {
 	}
 	jobID := ^uint64(0)
 	return func() {
-		msg, err := tmpl.Execute(pongo2.Context{})
+		var luaState *lua.LState
+		defer func() {
+			if luaState!=nil{
+				luaState.Close()
+			}
+		}()
+		msg, err := tmpl.Execute(pongo2.Context{
+			"_lua":luaState,
+		})
 		if err != nil {
 			log.Printf("渲染模板出错：%s", err)
 			return
 		}
-		msg=strings.TrimSpace(msg)
-		if msg!="" {
+		msg = strings.TrimSpace(msg)
+		if msg != "" {
 			for _, friend := range j.UserID {
 				zero.SendPrivateMessage(friend, msg)
 			}
@@ -82,7 +91,7 @@ func (j *Job) Executor() (func(), *uint64, error) {
 		if j.Once {
 			delete(jobs, jobID)
 			scheduler.Remove(entries[jobID])
-			if err := db.Delete(append([]byte("gypsum-jobs-"), ToBytes(jobID)...), nil); err != nil {
+			if err := db.Delete(append([]byte("gypsum-jobs-"), U64ToBytes(jobID)...), nil); err != nil {
 				log.Printf("delete job from database error: %s", err)
 			}
 		}
@@ -178,7 +187,7 @@ func createJob(c *gin.Context) {
 		return
 	}
 	cursor++
-	if err := db.Put([]byte("gypsum-$meta-cursor"), ToBytes(cursor), nil); err != nil {
+	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -200,7 +209,7 @@ func createJob(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put(append([]byte("gypsum-jobs-"), ToBytes(cursor)...), v, nil); err != nil {
+	if err := db.Put(append([]byte("gypsum-jobs-"), U64ToBytes(cursor)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -211,7 +220,7 @@ func createJob(c *gin.Context) {
 	c.JSON(201, gin.H{
 		"code":    0,
 		"message": "ok",
-		"job_id": cursor,
+		"job_id":  cursor,
 	})
 	return
 }
@@ -235,7 +244,7 @@ func deleteJob(c *gin.Context) {
 		return
 	}
 	delete(jobs, jobID)
-	if err := db.Delete(append([]byte("gypsum-jobs-"), ToBytes(jobID)...), nil); err != nil {
+	if err := db.Delete(append([]byte("gypsum-jobs-"), U64ToBytes(jobID)...), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3001,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -305,7 +314,7 @@ func modifyJob(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put(append([]byte("gypsum-jobs-"), ToBytes(jobID)...), v, nil); err != nil {
+	if err := db.Put(append([]byte("gypsum-jobs-"), U64ToBytes(jobID)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3002,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

@@ -4,6 +4,10 @@ base path: `/api/v1`
 
 请求成功时，状态码是 `2xx` 或 `4xx`，状态码为 `4xx` 时，会有 `message` 字段说明错误原因
 
+## 鉴权
+
+鉴权方式为 `Basic Auth`，详见 [MDN 文档](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Authentication)，一般来说可由浏览器自动处理
+
 ## 消息规则
 
 对象结构：消息规则
