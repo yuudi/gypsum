@@ -10,6 +10,7 @@ import (
 
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
 )
@@ -56,6 +57,7 @@ type Rule struct {
 	UserID      int64       `json:"user_id"`
 	MatcherType RuleType    `json:"matcher_type"`
 	Patterns    []string    `json:"patterns"`
+	OnlyAtMe    bool        `json:"only_at_me"`
 	Response    string      `json:"response"`
 	Priority    int         `json:"priority"`
 	Block       bool        `json:"block"`
@@ -83,6 +85,7 @@ func RuleFromBytes(b []byte) (*Rule, error) {
 		UserID:      0,
 		MatcherType: FullMatch,
 		Patterns:    []string{},
+		OnlyAtMe:    false,
 		Response:    "",
 		Priority:    50,
 		Block:       true,
@@ -135,19 +138,29 @@ func (h *Rule) Register(id uint64) error {
 		log.Printf("模板预处理出错：%s", err)
 		return err
 	}
+	rules := []zero.Rule{typeRule(h.MessageType)}
+	if h.GroupID != 0 {
+		rules = append(rules, groupRule(h.GroupID))
+	}
+	if h.UserID != 0 {
+		rules = append(rules, userRule(h.UserID))
+	}
+	if h.OnlyAtMe {
+		rules = append(rules, zero.OnlyToMe)
+	}
 	switch h.MatcherType {
 	case FullMatch:
-		zeroMatcher[id] = zero.OnFullMatchGroup(h.Patterns, typeRule(h.MessageType), groupRule(h.GroupID), userRule(h.UserID)).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		zeroMatcher[id] = zero.OnFullMatchGroup(h.Patterns, rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
 	case Keyword:
-		zeroMatcher[id] = zero.OnKeywordGroup(h.Patterns, typeRule(h.MessageType), groupRule(h.GroupID), userRule(h.UserID)).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		zeroMatcher[id] = zero.OnKeywordGroup(h.Patterns, rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
 	case Prefix:
-		zeroMatcher[id] = zero.OnPrefixGroup(h.Patterns, typeRule(h.MessageType), groupRule(h.GroupID), userRule(h.UserID)).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		zeroMatcher[id] = zero.OnPrefixGroup(h.Patterns, rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
 	case Suffix:
-		zeroMatcher[id] = zero.OnSuffixGroup(h.Patterns, typeRule(h.MessageType), groupRule(h.GroupID), userRule(h.UserID)).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		zeroMatcher[id] = zero.OnSuffixGroup(h.Patterns, rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
 	case Command:
-		zeroMatcher[id] = zero.OnCommandGroup(h.Patterns, typeRule(h.MessageType), groupRule(h.GroupID), userRule(h.UserID)).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		zeroMatcher[id] = zero.OnCommandGroup(h.Patterns, rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
 	case Regex:
-		zeroMatcher[id] = zero.OnRegex(h.Patterns[0], typeRule(h.MessageType), groupRule(h.GroupID), userRule(h.UserID)).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+		zeroMatcher[id] = zero.OnRegex(h.Patterns[0], rules...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
 	default:
 		log.Printf("Unknown type %d", h.MatcherType)
 	}
@@ -158,8 +171,14 @@ func templateRuleHandler(tmpl pongo2.Template) zero.Handler {
 	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
 		reply, err := tmpl.Execute(pongo2.Context{
 			"matcher": matcher,
-			"event":   event,
 			"state":   state,
+			"event": func() interface{} {
+				e := make(map[string]interface{})
+				if err := jsoniter.Unmarshal(event.RawEvent, &e); err != nil {
+					log.Printf("error when decode event json: %s", err)
+				}
+				return e
+			},
 		})
 		if err != nil {
 			log.Printf("渲染模板出错：%s", err)
@@ -267,6 +286,7 @@ func createRule(c *gin.Context) {
 	c.JSON(201, gin.H{
 		"code":    0,
 		"message": "ok",
+		"rule_id": cursor,
 	})
 	return
 }

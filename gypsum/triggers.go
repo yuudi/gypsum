@@ -10,6 +10,7 @@ import (
 
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
+	jsoniter "github.com/json-iterator/go"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
 )
@@ -86,8 +87,14 @@ func templateTriggerHandler(tmpl pongo2.Template) zero.Handler {
 	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
 		reply, err := tmpl.Execute(pongo2.Context{
 			"matcher": matcher,
-			"event":   event,
 			"state":   state,
+			"event": func() interface{} {
+				e := make(map[string]interface{})
+				if err := jsoniter.Unmarshal(event.RawEvent, &e); err != nil {
+					log.Printf("error when decode event json: %s", err)
+				}
+				return e
+			},
 		})
 		if err != nil {
 			log.Printf("渲染模板出错：%s", err)
@@ -195,6 +202,7 @@ func createTrigger(c *gin.Context) {
 	c.JSON(201, gin.H{
 		"code":    0,
 		"message": "ok",
+		"trigger_id": cursor,
 	})
 	return
 }

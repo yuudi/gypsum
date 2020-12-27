@@ -7,12 +7,13 @@
 	<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
 	<script>
 		function getForm() {
-			let obj = {message_type:0xffffffff};
+			let obj = { message_type: 0xffffffff };
 			obj.active = $("input[name='active']:checked").val() == "true";
 			obj.group_id = $("#group_id")[0].valueAsNumber;
 			obj.user_id = $("#user_id")[0].valueAsNumber;
 			obj.matcher_type = $("#matcher_type")[0].valueAsNumber;
 			obj.patterns = [$("#pattern")[0].value];
+			obj.only_at_me = $("#only_at_me")[0].checked;
 			obj.response = $("#response")[0].value;
 			obj.priority = $("#priority")[0].valueAsNumber;
 			obj.block = $("#block")[0].checked;
@@ -65,9 +66,10 @@
 				<option value="5">正则匹配</option>
 			</select><br />
 			匹配: <input id="pattern"><br />
+			仅被at: <input id="only_at_me" type="checkbox"><br />
 			回复: <textarea id="response" cols="60" rows="5"></textarea><br />
-			优先级: <input id="priority" type="number"><br />
-			阻止后续: <input id="block" type="checkbox"><br />
+			优先级: <input id="priority" type="number" value="50"><br />
+			阻止后续: <input id="block" type="checkbox" checked><br />
 		</form>
 		<button id="add_rule">新增规则</button>
 	</div>

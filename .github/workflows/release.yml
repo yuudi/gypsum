@@ -37,9 +37,10 @@ jobs:
 
       - name: Release Condition
         id: release_condition
+        shell: bash
         run: |
           Publish=""
-          if [ ${{ github.event_name }} -ne "push" ]; then Publish="--skip-publish"; fi
+          if [ "${{ github.event_name }}" -ne "push" ]; then Publish="--skip-publish"; fi
           echo "::set-output name=PUBLISH::${Publish} "
 
       - name: Run GoReleaser

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
@@ -68,13 +69,16 @@ func (j *Job) Executor() (func(), *uint64, error) {
 			log.Printf("渲染模板出错：%s", err)
 			return
 		}
-		for _, friend := range j.UserID {
-			zero.SendPrivateMessage(friend, msg)
+		msg=strings.TrimSpace(msg)
+		if msg!="" {
+			for _, friend := range j.UserID {
+				zero.SendPrivateMessage(friend, msg)
+			}
+			for _, group := range j.GroupID {
+				zero.SendGroupMessage(group, msg)
+			}
+			log.Println(msg)
 		}
-		for _, group := range j.GroupID {
-			zero.SendGroupMessage(group, msg)
-		}
-		log.Println(msg)
 		if j.Once {
 			delete(jobs, jobID)
 			scheduler.Remove(entries[jobID])
@@ -207,6 +211,7 @@ func createJob(c *gin.Context) {
 	c.JSON(201, gin.H{
 		"code":    0,
 		"message": "ok",
+		"job_id": cursor,
 	})
 	return
 }

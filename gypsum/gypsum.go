@@ -5,6 +5,8 @@ import (
 	"os"
 
 	zero "github.com/wdvxdr1123/ZeroBot"
+
+	_ "github.com/yuudi/gypsum/gypsum/jsoniter_plugin_integer_interface"
 )
 
 var Config = struct {

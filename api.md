@@ -15,6 +15,7 @@ base path: `/api/v1`
 | group_id     | integer         | 匹配群，`0`表示所有                                                                   |
 | user_id      | integer         | 匹配 QQ 号，`0`表示所有                                                               |
 | matcher_type | integer         | 匹配方式<br/>0 完全匹配，1 关键词匹配，1 前缀匹配，3 后缀匹配，4 命令匹配，5 正则匹配 |
+| only_at_me   | boolean         | 是否只有被 at 才会触发                                                                 |
 | patterns     | array\<string\> | 匹配表达式的数组                                                                      |
 | response     | string          | 回复模板                                                                              |
 | priority     | integer         | 优先级                                                                                |
