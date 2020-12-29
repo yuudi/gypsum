@@ -1,6 +1,6 @@
 FROM alpine:latest
 
-COPY /dist/cqhttp /usr/bin/gypsum
+COPY ./dist/gypsum_linux_amd64/gypsum /usr/bin/gypsum
 
 WORKDIR /gypsum
 

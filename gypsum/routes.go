@@ -1,10 +1,9 @@
 package gypsum
 
 import (
-	"log"
-
 	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
+	log "github.com/sirupsen/logrus"
 )
 
 func serveWeb() {
@@ -31,10 +30,26 @@ func serveWeb() {
 	authorized.POST("/jobs", createJob)
 	authorized.DELETE("/jobs/:jid", deleteJob)
 	authorized.PUT("/jobs/:jid", modifyJob)
+	authorized.GET("/resources", getResources)
+	authorized.GET("/resources/:rid", getResourceByID)
+	authorized.GET("/resources/:rid/content", downloadResource)
+	authorized.POST("/resources/:name", uploadResource)
+	authorized.DELETE("/resources/:rid", deleteResource)
+	authorized.PATCH("/resources/:rid", renameResource)
 
 	err := r.Run(Config.Listen)
 	if err != nil {
-		log.Printf("binding address error: %s", err)
-		//panic(err)
+		log.Errorf("binding address error: %s", err)
+		// panic(err)
 	}
+}
+
+type RestError struct {
+	Status  int
+	Code    int
+	Message string
+}
+
+func (r RestError) Error() string {
+	return r.Message
 }

@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
+	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
 	lua "github.com/yuin/gopher-lua"
@@ -19,6 +19,7 @@ import (
 type TriggerCategory int
 
 type Trigger struct {
+	DisplayName string `json:"display_name"`
 	Active      bool   `json:"active"`
 	GroupID     int64  `json:"group_id"`
 	UserID      int64  `json:"user_id"`
@@ -63,11 +64,11 @@ func noticeRule(noticeType string) zero.Rule {
 	ntype := strings.SplitN(noticeType, "/", 2)
 	if len(ntype) == 1 {
 		return func(event *zero.Event, _ zero.State) bool {
-			return event.NoticeType == ntype[0] || event.RequestType == ntype[0]
+			return event.DetailType == ntype[0]
 		}
 	}
 	return func(event *zero.Event, _ zero.State) bool {
-		return (event.NoticeType == ntype[0] || event.RequestType == ntype[0]) && event.SubType == ntype[1]
+		return event.DetailType == ntype[0] && event.SubType == ntype[1]
 	}
 }
 
@@ -77,7 +78,7 @@ func (t *Trigger) Register(id uint64) error {
 	}
 	tmpl, err := pongo2.FromString(t.Response)
 	if err != nil {
-		log.Printf("模板预处理出错：%s", err)
+		log.Errorf("模板预处理出错：%s", err)
 		return err
 	}
 	zeroTrigger[id] = zero.OnNotice(noticeRule(t.TriggerType), groupRule(t.GroupID), userRule(t.UserID)).SetPriority(t.Priority).SetBlock(t.Block).Handle(templateTriggerHandler(*tmpl))
@@ -88,7 +89,7 @@ func templateTriggerHandler(tmpl pongo2.Template) zero.Handler {
 	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
 		var luaState *lua.LState
 		defer func() {
-			if luaState!=nil{
+			if luaState != nil {
 				luaState.Close()
 			}
 		}()
@@ -98,20 +99,20 @@ func templateTriggerHandler(tmpl pongo2.Template) zero.Handler {
 			"event": func() interface{} {
 				e := make(map[string]interface{})
 				if err := jsoniter.UnmarshalFromString(event.RawEvent.Raw, &e); err != nil {
-					log.Printf("error when decode event json: %s", err)
+					log.Errorf("error when decode event json: %s", err)
 				}
 				return e
 			},
 			"at_sender": func() string {
 				if event.GroupID == 0 {
-					log.Printf("cannot at sender in event %s/%s", event.PostType, event.SubType)
+					log.Errorf("cannot at sender in event %s/%s", event.PostType, event.SubType)
 					return ""
 				}
 				return fmt.Sprintf("[CQ:at,qq=%d]", event.UserID)
 			},
 			"approve": func() {
 				if event.PostType != "request" {
-					log.Printf("cannot approve: event is not a request: %#v", event)
+					log.Warnf("cannot approve: event is not a request: %#v", event)
 				}
 				switch event.RequestType {
 				case "friend":
@@ -120,10 +121,10 @@ func templateTriggerHandler(tmpl pongo2.Template) zero.Handler {
 					zero.SetGroupAddRequest(event.Flag, event.SubType, true, "")
 				}
 			},
-			"_lua":luaState,
+			"_lua": luaState,
 		})
 		if err != nil {
-			log.Printf("渲染模板出错：%s", err)
+			log.Errorf("渲染模板出错：%s", err)
 			return zero.FinishResponse
 		}
 		reply = strings.TrimSpace(reply)
@@ -141,7 +142,7 @@ func loadTriggers() {
 	defer func() {
 		iter.Release()
 		if err := iter.Error(); err != nil {
-			log.Printf("载入数据错误：%s", err)
+			log.Errorf("载入数据错误：%s", err)
 		}
 	}()
 	for iter.Next() {
@@ -149,12 +150,12 @@ func loadTriggers() {
 		value := iter.Value()
 		t, e := TriggerFromByte(value)
 		if e != nil {
-			log.Printf("无法加载规则%d：%s", key, e)
+			log.Errorf("无法加载规则%d：%s", key, e)
 			continue
 		}
 		triggers[key] = *t
 		if e := t.Register(key); e != nil {
-			log.Printf("无法注册规则%d：%s", key, e)
+			log.Errorf("无法注册规则%d：%s", key, e)
 			continue
 		}
 	}
@@ -191,6 +192,13 @@ func createTrigger(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"code":    2000,
 			"message": fmt.Sprintf("converting error: %s", err),
+		})
+		return
+	}
+	if err := checkTemplate(trigger.Response); err != nil {
+		c.JSON(422, gin.H{
+			"code":    2041,
+			"message": fmt.Sprintf("template error: %s", err),
 		})
 		return
 	}
@@ -291,6 +299,13 @@ func modifyTrigger(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"code":    2000,
 			"message": fmt.Sprintf("converting error: %s", err),
+		})
+		return
+	}
+	if err := checkTemplate(newTrigger.Response); err != nil {
+		c.JSON(422, gin.H{
+			"code":    2041,
+			"message": fmt.Sprintf("template error: %s", err),
 		})
 		return
 	}

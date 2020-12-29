@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -53,6 +54,7 @@ var messageTypeTable = map[string]MessageType{
 }
 
 type Rule struct {
+	DisplayName string      `json:"display_name"`
 	Active      bool        `json:"active"`
 	MessageType MessageType `json:"message_type"`
 	GroupID     int64       `json:"group_id"`
@@ -103,7 +105,7 @@ func typeRule(acceptType MessageType) zero.Rule {
 	return func(event *zero.Event, _ zero.State) bool {
 		msgType, ok := messageTypeTable[event.MessageType]
 		if !ok {
-			log.Printf("未知的消息类型：%s", event.MessageType)
+			log.Warnf("未知的消息类型：%s", event.MessageType)
 			return false
 		}
 		return (msgType & acceptType) != NoMessage
@@ -137,7 +139,7 @@ func (h *Rule) Register(id uint64) error {
 	}
 	tmpl, err := pongo2.FromString(h.Response)
 	if err != nil {
-		log.Printf("模板预处理出错：%s", err)
+		log.Errorf("模板预处理出错：%s", err)
 		return err
 	}
 	rules := []zero.Rule{typeRule(h.MessageType)}
@@ -165,7 +167,7 @@ func (h *Rule) Register(id uint64) error {
 	case Regex:
 		msgRule = zero.RegexRule(h.Patterns[0])
 	default:
-		log.Printf("Unknown type %#v", h.MatcherType)
+		log.Errorf("Unknown type %#v", h.MatcherType)
 		return errors.New(fmt.Sprintf("Unknown type %#v", h.MatcherType))
 	}
 	zeroMatcher[id] = zero.OnMessage(append(rules, msgRule)...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
@@ -176,7 +178,7 @@ func templateRuleHandler(tmpl pongo2.Template) zero.Handler {
 	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
 		var luaState *lua.LState
 		defer func() {
-			if luaState!=nil{
+			if luaState != nil {
 				luaState.Close()
 			}
 		}()
@@ -186,22 +188,22 @@ func templateRuleHandler(tmpl pongo2.Template) zero.Handler {
 			"event": func() interface{} {
 				e := make(map[string]interface{})
 				if err := jsoniter.UnmarshalFromString(event.RawEvent.Raw, &e); err != nil {
-					log.Printf("error when decode event json: %s", err)
+					log.Errorf("error when decode event json: %s", err)
 				}
 				return e
 			},
 			"json_event": &event.RawEvent.Raw,
 			"at_sender": func() string {
 				if event.GroupID == 0 {
-					log.Printf("cannot at sender in event %s/%s", event.PostType, event.SubType)
+					log.Warnf("cannot at sender in event %s/%s", event.PostType, event.SubType)
 					return ""
 				}
 				return fmt.Sprintf("[CQ:at,qq=%d]", event.UserID)
 			},
-			"_lua":luaState,
+			"_lua": luaState,
 		})
 		if err != nil {
-			log.Printf("error when rendering template：%s", err)
+			log.Errorf("error when rendering template：%s", err)
 			return zero.FinishResponse
 		}
 		reply = strings.TrimSpace(reply)
@@ -219,7 +221,7 @@ func loadRules() {
 	defer func() {
 		iter.Release()
 		if err := iter.Error(); err != nil {
-			log.Printf("载入数据错误：%s", err)
+			log.Errorf("载入数据错误：%s", err)
 		}
 	}()
 	for iter.Next() {
@@ -227,15 +229,25 @@ func loadRules() {
 		value := iter.Value()
 		r, e := RuleFromBytes(value)
 		if e != nil {
-			log.Printf("无法加载规则%d：%s", key, e)
+			log.Errorf("无法加载规则%d：%s", key, e)
 			continue
 		}
 		rules[key] = *r
 		if e := r.Register(key); e != nil {
-			log.Printf("无法注册规则%d：%s", key, e)
+			log.Errorf("无法注册规则%d：%s", key, e)
 			continue
 		}
 	}
+}
+
+func checkRegex(pattern string) error {
+	_, err := regexp.Compile(pattern)
+	return err
+}
+
+func checkTemplate(template string) error {
+	_, err := pongo2.FromString(template)
+	return err
 }
 
 func getRules(c *gin.Context) {
@@ -269,6 +281,29 @@ func createRule(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"code":    2000,
 			"message": fmt.Sprintf("converting error: %s", err),
+		})
+		return
+	}
+	if rule.MatcherType == Regex {
+		if len(rule.Patterns) != 1 {
+			c.JSON(422, gin.H{
+				"code":    2001,
+				"message": fmt.Sprintf("regex mather can only accept one pattern"),
+			})
+			return
+		}
+		if err := checkRegex(rule.Patterns[1]); err != nil {
+			c.JSON(422, gin.H{
+				"code":    2002,
+				"message": fmt.Sprintf("cannot compile regex pattern: %s", err),
+			})
+			return
+		}
+	}
+	if err := checkTemplate(rule.Response); err != nil {
+		c.JSON(422, gin.H{
+			"code":    2041,
+			"message": fmt.Sprintf("template error: %s", err),
 		})
 		return
 	}
@@ -345,7 +380,6 @@ func deleteRule(c *gin.Context) {
 		"message": "deleted",
 	})
 	return
-
 }
 
 func modifyRule(c *gin.Context) {
@@ -371,6 +405,29 @@ func modifyRule(c *gin.Context) {
 		c.JSON(400, gin.H{
 			"code":    2000,
 			"message": fmt.Sprintf("converting error: %s", err),
+		})
+		return
+	}
+	if newRule.MatcherType == Regex {
+		if len(newRule.Patterns) != 1 {
+			c.JSON(422, gin.H{
+				"code":    2001,
+				"message": fmt.Sprintf("regex mather can only accept one pattern"),
+			})
+			return
+		}
+		if err := checkRegex(newRule.Patterns[1]); err != nil {
+			c.JSON(422, gin.H{
+				"code":    2002,
+				"message": fmt.Sprintf("cannot compile regex pattern: %s", err),
+			})
+			return
+		}
+	}
+	if err := checkTemplate(newRule.Response); err != nil {
+		c.JSON(422, gin.H{
+			"code":    2041,
+			"message": fmt.Sprintf("template error: %s", err),
 		})
 		return
 	}

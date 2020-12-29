@@ -29,5 +29,6 @@ func loadData() error {
 	loadRules()
 	loadTriggers()
 	loadJobs()
+	loadResources()
 	return nil
 }

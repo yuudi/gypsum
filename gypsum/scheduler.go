@@ -4,25 +4,26 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"log"
 	"strconv"
 	"strings"
 
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 	"github.com/robfig/cron/v3"
+	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
 	lua "github.com/yuin/gopher-lua"
 )
 
 type Job struct {
-	Active   bool    `json:"active"`
-	GroupID  []int64 `json:"group_id"`
-	UserID   []int64 `json:"user_id"`
-	Once     bool    `json:"once"`
-	CronSpec string  `json:"cron_spec"`
-	Action   string  `json:"action"`
+	DisplayName string  `json:"display_name"`
+	Active      bool    `json:"active"`
+	GroupID     []int64 `json:"group_id"`
+	UserID      []int64 `json:"user_id"`
+	Once        bool    `json:"once"`
+	CronSpec    string  `json:"cron_spec"`
+	Action      string  `json:"action"`
 }
 
 var (
@@ -67,15 +68,15 @@ func (j *Job) Executor() (func(), *uint64, error) {
 	return func() {
 		var luaState *lua.LState
 		defer func() {
-			if luaState!=nil{
+			if luaState != nil {
 				luaState.Close()
 			}
 		}()
 		msg, err := tmpl.Execute(pongo2.Context{
-			"_lua":luaState,
+			"_lua": luaState,
 		})
 		if err != nil {
-			log.Printf("渲染模板出错：%s", err)
+			log.Errorf("渲染模板出错：%s", err)
 			return
 		}
 		msg = strings.TrimSpace(msg)
@@ -86,13 +87,13 @@ func (j *Job) Executor() (func(), *uint64, error) {
 			for _, group := range j.GroupID {
 				zero.SendGroupMessage(group, msg)
 			}
-			log.Println(msg)
+			log.Infof("scheduled job executed: %s", msg)
 		}
 		if j.Once {
 			delete(jobs, jobID)
 			scheduler.Remove(entries[jobID])
 			if err := db.Delete(append([]byte("gypsum-jobs-"), U64ToBytes(jobID)...), nil); err != nil {
-				log.Printf("delete job from database error: %s", err)
+				log.Errorf("delete job from database error: %s", err)
 			}
 		}
 	}, &jobID, nil
@@ -123,7 +124,7 @@ func loadJobs() {
 	defer func() {
 		iter.Release()
 		if err := iter.Error(); err != nil {
-			log.Printf("载入数据错误：%s", err)
+			log.Errorf("载入数据错误：%s", err)
 		}
 	}()
 	for iter.Next() {
@@ -131,12 +132,12 @@ func loadJobs() {
 		value := iter.Value()
 		j, e := JobFromBytes(value)
 		if e != nil {
-			log.Printf("无法加载任务%d：%s", key, e)
+			log.Errorf("无法加载任务%d：%s", key, e)
 			continue
 		}
 		jobs[key] = *j
 		if e := j.Register(key); e != nil {
-			log.Printf("无法注册任务%d：%s", key, e)
+			log.Errorf("无法注册任务%d：%s", key, e)
 			continue
 		}
 	}
@@ -183,6 +184,13 @@ func createJob(c *gin.Context) {
 		c.JSON(422, gin.H{
 			"code":    2010,
 			"message": fmt.Sprintf("spec syntax error: %s", err),
+		})
+		return
+	}
+	if err := checkTemplate(job.Action); err != nil {
+		c.JSON(422, gin.H{
+			"code":    2041,
+			"message": fmt.Sprintf("template error: %s", err),
 		})
 		return
 	}
@@ -293,6 +301,13 @@ func modifyJob(c *gin.Context) {
 		c.JSON(422, gin.H{
 			"code":    2010,
 			"message": fmt.Sprintf("spec syntax error: %s", err),
+		})
+		return
+	}
+	if err := checkTemplate(newJob.Action); err != nil {
+		c.JSON(422, gin.H{
+			"code":    2041,
+			"message": fmt.Sprintf("template error: %s", err),
 		})
 		return
 	}

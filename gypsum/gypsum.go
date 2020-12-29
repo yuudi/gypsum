@@ -1,12 +1,12 @@
 package gypsum
 
 import (
-	"log"
 	"os"
 
+	log "github.com/sirupsen/logrus"
 	zero "github.com/wdvxdr1123/ZeroBot"
 
-	_ "github.com/yuudi/gypsum/gypsum/jsoniter_plugin_integer_interface"
+	_ "github.com/yuudi/gypsum/helper/jsoniter_plugin_integer_interface"
 )
 
 var Config = struct {
@@ -36,15 +36,15 @@ func (_ *gypsumPlugin) GetPluginInfo() zero.PluginInfo { // 返回插件信息
 
 func (_ *gypsumPlugin) Start() { // 插件主体
 	if err := initTemplating(); err != nil {
-		log.Printf("lua引擎初始化错误：%s", err)
+		log.Errorf("lua引擎初始化错误：%s", err)
 		return
 	}
 	if err := initDb(); err != nil {
-		log.Printf("数据库初始化错误：%s", err)
+		log.Errorf("数据库初始化错误：%s", err)
 		return
 	}
 	if err := loadData(); err != nil {
-		log.Printf("数据库加载错误：%s", err)
+		log.Errorf("数据库加载错误：%s", err)
 		return
 	}
 	go serveWeb()

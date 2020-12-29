@@ -34,17 +34,17 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 			var err error
 			luaEvent, err = luajson.Decode(L, []byte(*event.(*string)))
 			if err != nil {
-				log.Printf("lua execution error: cannot resume lua event from pongo2 context")
+				log.Errorf("lua execution error: cannot resume lua event from pongo2 context")
 				return nil
 			}
 		}
 		L.SetGlobal("write", L.NewFunction(Writer(writer)))
 		L.SetGlobal("event", luaEvent)
-		L.SetGlobal("botapi",L.NewFunction(botApi))
-		ctx.Public["_lua"]=L
+		L.SetGlobal("botapi", L.NewFunction(botApi))
+		ctx.Public["_lua"] = L
 	}
 	if err := L.DoString(s); err != nil {
-		log.Printf("lua execution error: %s", err)
+		log.Errorf("lua execution error: %s", err)
 		return nil
 	}
 	return nil

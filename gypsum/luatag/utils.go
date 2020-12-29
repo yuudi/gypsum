@@ -1,8 +1,7 @@
 package luatag
 
 import (
-	"log"
-
+	log "github.com/sirupsen/logrus"
 	zero "github.com/wdvxdr1123/ZeroBot"
 	lua "github.com/yuin/gopher-lua"
 	luajson "layeh.com/gopher-json"
@@ -11,9 +10,9 @@ import (
 func Writer(w interface{ WriteString(string) (int, error) }) func(*lua.LState) int {
 	return func(L *lua.LState) int {
 		top := L.GetTop()
-		for i := 1; i <= top; i++{
+		for i := 1; i <= top; i++ {
 			_, _ = w.WriteString(L.ToStringMeta(L.Get(i)).String())
-			if i != top{
+			if i != top {
 				_, _ = w.WriteString(" ")
 			}
 		}
@@ -39,7 +38,7 @@ func botApi(L *lua.LState) int {
 			case lua.LTBool:
 				params[key] = bool(v.(lua.LBool))
 			default:
-				log.Printf("error when calling api from lua: cannot use type %s", v.Type().String())
+				log.Errorf("error when calling api from lua: cannot use type %s", v.Type().String())
 			}
 		})
 	}

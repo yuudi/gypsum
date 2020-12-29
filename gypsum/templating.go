@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"encoding/gob"
 	"fmt"
-	"log"
 	"math/rand"
 	"strings"
 	"time"
 
 	"github.com/flosch/pongo2"
+	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb"
 
 	"github.com/yuudi/gypsum/gypsum/luatag"
@@ -31,6 +31,7 @@ func initTemplating() error {
 
 	// register functions
 	pongo2.Globals["at"] = at
+	pongo2.Globals["res"] = resourcePath
 	pongo2.Globals["image"] = image
 	pongo2.Globals["dynamic_image"] = dynamicImage
 	pongo2.Globals["sleep"] = sleep
@@ -44,12 +45,10 @@ func initTemplating() error {
 	return nil
 }
 
+var cqEscape = strings.NewReplacer("&", "&amp;","[", "&#91;","]", "&#93;",",", "&#44;")
+
 func filterEscapeCQCode(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
-	output := strings.Replace(in.String(), "&", "&amp;", -1)
-	output = strings.Replace(output, "[", "&#91;", -1)
-	output = strings.Replace(output, "]", "&#93;", -1)
-	output = strings.Replace(output, ",", "&#44;", -1)
-	return pongo2.AsValue(output), nil
+	return pongo2.AsValue(cqEscape.Replace(in.String())), nil
 }
 
 func at(qq ...interface{}) string {
@@ -65,7 +64,7 @@ func atqq(qq interface{}) string {
 	case int, int32, int64, uint, uint32, uint64, string:
 		return fmt.Sprintf("[CQ:at,qq=%v] ", qq)
 	default:
-		log.Printf("error: cannot accept %#v as qqid", qq)
+		log.Warnf("error: cannot accept %#v as qqid", qq)
 		return "ERROR"
 	}
 }
@@ -82,7 +81,7 @@ func dynamicImage(src string) string {
 func sleep(duration interface{}) string {
 	seconds, err := ToFloat(duration)
 	if err != nil {
-		log.Printf("error: cannot accept %#v as interger", duration)
+		log.Warnf("error: cannot accept %#v as interger", duration)
 		return "ERROR"
 	}
 	time.Sleep(time.Duration(seconds * float64(time.Second)))
@@ -102,7 +101,7 @@ func dbGet(key interface{}) interface{} {
 	case int:
 		bytesKey = U64ToBytes(uint64(key.(int)))
 	default:
-		log.Printf("cannot use %#v (%T) as database key", key, key)
+		log.Errorf("cannot use %#v (%T) as database key", key, key)
 		return nil
 	}
 	bytesData, err := db.Get(append([]byte("gypsum-userDB-"), bytesKey...), nil)
@@ -114,7 +113,7 @@ func dbGet(key interface{}) interface{} {
 	buffer.Write(bytesData)
 	decoder := gob.NewDecoder(&buffer)
 	if err := decoder.Decode(data); err != nil {
-		log.Printf("error when reading data from database: %s", err)
+		log.Errorf("error when reading data from database: %s", err)
 		return nil
 	}
 	return data
@@ -128,16 +127,16 @@ func dbPut(key interface{}, value interface{}) {
 	case int:
 		bytesKey = U64ToBytes(uint64(key.(int)))
 	default:
-		log.Printf("cannot use %#v (%T) as database key", key, key)
+		log.Errorf("cannot use %#v (%T) as database key", key, key)
 	}
 	buffer := bytes.Buffer{}
 	encoder := gob.NewEncoder(&buffer)
 	if err := encoder.Encode(value); err != nil {
-		log.Printf("error when encode %#v (%T) as bytes: %s", value, value, err)
+		log.Errorf("error when encode %#v (%T) as bytes: %s", value, value, err)
 		return
 	}
 	if err := db.Put(append([]byte("gypsum-userDB-"), bytesKey...), buffer.Bytes(), nil); err != nil {
-		log.Printf("error when put value to database %s", err)
+		log.Errorf("error when put value to database %s", err)
 		return
 	}
 }

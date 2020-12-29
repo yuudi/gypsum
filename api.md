@@ -2,7 +2,9 @@
 
 base path: `/api/v1`
 
-请求成功时，状态码是 `2xx` 或 `4xx`，状态码为 `4xx` 时，会有 `message` 字段说明错误原因
+请求成功时，状态码是 `200` 或 `201`，`code` 值为 `0`（部分特殊见说明）  
+当状态码为 `4xx` 时，会有 `message` 字段说明错误原因  
+当状态码为 `5xx` 时，如果 `Content-Type` 不是 `application/json`，则为服务故障
 
 ## 鉴权
 
@@ -14,12 +16,13 @@ base path: `/api/v1`
 
 | 字段         | 类型            | 含义                                                                                  |
 | ------------ | --------------- | ------------------------------------------------------------------------------------- |
+| display_name | string          | 显示名称                                                                              |
 | activate     | boolean         | 当前规则是否启用                                                                      |
 | message_type | integer\*       | 匹配的消息类型                                                                        |
 | group_id     | integer         | 匹配群，`0`表示所有                                                                   |
 | user_id      | integer         | 匹配 QQ 号，`0`表示所有                                                               |
-| matcher_type | integer         | 匹配方式<br/>0 完全匹配，1 关键词匹配，1 前缀匹配，3 后缀匹配，4 命令匹配，5 正则匹配 |
-| only_at_me   | boolean         | 是否只有被 at 才会触发                                                                 |
+| matcher_type | integer         | 匹配方式<br/>`0` 完全匹配<br/>`1` 关键词匹配<br/>`2` 前缀匹配<br/>`3` 后缀匹配<br/>`4` 命令匹配<br/>`5` 正则匹配 |
+| only_at_me   | boolean         | 是否只有被 at 才会触发                                                                |
 | patterns     | array\<string\> | 匹配表达式的数组                                                                      |
 | response     | string          | 回复模板                                                                              |
 | priority     | integer         | 优先级                                                                                |
@@ -29,14 +32,14 @@ base path: `/api/v1`
 
 | 类型         | 编号 |
 | ------------ | ---- |
-| 好友消息     | 0x01 |
-| 群临时消息   | 0x02 |
-| 其他临时消息 | 0x04 |
-| 公众号消息   | 0x08 |
-| 群普通消息   | 0x10 |
-| 群匿名消息   | 0x20 |
-| 群系统通知   | 0x40 |
-| 讨论组消息   | 0x80 |
+| 好友消息     | 0x0001 |
+| 群临时消息   | 0x0002 |
+| 其他临时消息 | 0x0004 |
+| 公众号消息   | 0x0008 |
+| 群普通消息   | 0x0010 |
+| 群匿名消息   | 0x0020 |
+| 群系统通知   | 0x0040 |
+| 讨论组消息   | 0x0080 |
 
 如需同时匹配多种消息可用`位或`运算，例如：0x07 匹配所有私聊消息
 
@@ -44,21 +47,23 @@ base path: `/api/v1`
 
 GET `/rules`
 
-返回一个对象，key 是整数（即`rule_id`，不一定连续），value 是规则
+返回一个对象，key 是整数（即`rule_id`，不一定连续），value 是`规则`
 
 ### 查看规则
 
 GET `/rules/{rule_id}`
 
-返回一个规则
+返回一个`规则`
 
 ### 添加规则
 
 POST `/rules`
 
-请求体为一条规则
+请求体为一条`规则`，如果匹配方式是正则匹配，那么 `pattern` 数组长度必须为 1
 
 返回 `status 201` `code=0`
+
+如果正则表达式语法错误，将返回 http 状态码 `422 Unprocessable Entity`
 
 ### 删除规则
 
@@ -70,23 +75,36 @@ DELETE `/rules/{rule_id}`
 
 PUT `/rules/{rule_id}`
 
-请求体为一条规则
+请求体为一条`规则`，如果匹配方式是正则匹配，那么 `pattern` 数组长度必须为 1
 
 返回 `code=0`
+
+如果正则表达式语法错误，将返回 http 状态码 `422 Unprocessable Entity`
 
 ## 触发事件
 
 对象结构：事件规则
 
-| 字段         | 类型    | 含义                                                              |
-| ------------ | ------- | ----------------------------------------------------------------- |
-| activate     | boolean | 当前规则是否启用                                                  |
-| group_id     | integer | 匹配群，`0`表示所有                                               |
-| user_id      | integer | 匹配 QQ 号，`0`表示所有                                           |
-| trigger_type | string  | 触发事件，具体见<a href="javascript:alert('咕咕咕')">模板文档</a> |
-| response     | string  | 回复模板                                                          |
-| priority     | integer | 优先级                                                            |
-| block        | boolean | 是否阻止后续规则                                                  |
+| 字段         | 类型     | 含义                    |
+| ------------ | -------- | ----------------------- |
+| display_name | string   | 显示名称                |
+| activate     | boolean  | 当前规则是否启用        |
+| group_id     | integer  | 匹配群，`0`表示所有     |
+| user_id      | integer  | 匹配 QQ 号，`0`表示所有 |
+| trigger_type | string\* | 触发事件                |
+| response     | string   | 回复模板                |
+| priority     | integer  | 优先级                  |
+| block        | boolean  | 是否阻止后续规则        |
+
+触发事件是一个字符串，格式为 `<detail-type>[/<sub-type>]`
+
+其中：  
+`detail-type` 为 onebot 协议中 `post_type` 或 `request_type` 的内容  
+`sub-type` 为 onebot 协议中 `sub_type` 的内容，可省略
+
+例如：  
+`group_increase/approve` 匹配 `群成员增加` 中的 `管理员同意入群` 事件  
+`group_increase` 匹配所有 `群成员增加` 事件
 
 ### 列出所有事件规则
 
@@ -98,13 +116,13 @@ GET `/triggers`
 
 GET `/triggers/{trigger_id}`
 
-返回一个规则
+返回一个`规则`
 
 ### 添加事件规则
 
 POST `/triggers`
 
-请求体为一条规则
+请求体为一条`规则`
 
 返回 `status 201` `code=0`
 
@@ -118,7 +136,7 @@ DELETE `/triggers/{trigger_id}`
 
 PUT `/triggers/{trigger_id}`
 
-请求体为一条规则
+请求体为一条`规则`
 
 返回 `code=0`
 
@@ -126,32 +144,33 @@ PUT `/triggers/{trigger_id}`
 
 对象结构：任务
 
-| 字段      | 类型             | 含义                                                                            |
-| --------- | ---------------- | ------------------------------------------------------------------------------- |
-| activate  | boolean          | 当前任务是否启用                                                                |
-| group_id  | array\<integer\> | 发送结果到群号                                                                  |
-| user_id   | array\<integer\> | 发送结果到 QQ 号                                                                |
-| once      | boolean          | 当前任务是否是一次性任务                                                        |
-| cron_spec | string           | 计划任务表达式，详见[cron](https://pkg.go.dev/github.com/robfig/cron#hdr-Usage) |
-| action    | string           | 执行任务模板                                                                    |
+| 字段         | 类型             | 含义                                                                            |
+| ------------ | ---------------- | ------------------------------------------------------------------------------- |
+| display_name | string           | 显示名称                                                                        |
+| activate     | boolean          | 当前任务是否启用                                                                |
+| group_id     | array\<integer\> | 发送结果到群号                                                                  |
+| user_id      | array\<integer\> | 发送结果到 QQ 号                                                                |
+| once         | boolean          | 当前任务是否是一次性任务                                                        |
+| cron_spec    | string           | 计划任务表达式，详见[cron](https://pkg.go.dev/github.com/robfig/cron#hdr-Usage) |
+| action       | string           | 执行任务模板                                                                    |
 
 ### 列出所有任务
 
 GET `/jobs`
 
-返回一个对象，key 是整数（即`job_id`，不一定连续），value 是规则
+返回一个对象，key 是整数（即`job_id`，不一定连续），value 是`规则`
 
 ### 查看任务
 
 GET `/jobs/{job_id}`
 
-返回一个规则
+返回一个`任务`
 
 ### 添加任务
 
 POST `/jobs`
 
-请求体为一条任务
+请求体为一条`任务`
 
 返回 `status 201` `code=0`
 
@@ -167,12 +186,85 @@ DELETE `/jobs/{job_id}`
 
 PUT `/jobs/{job_id}`
 
-请求体为一条任务
+请求体为一条`任务`
 
 返回 `code=0`
 
 如果计划任务表达式语法错误，将返回 http 状态码 `422 Unprocessable Entity; code=2010`
 
 ## 静态资源
+
+对象结构：资源
+
+| 字段         | 类型   | 含义                         |
+| ------------ | ------ | ---------------------------- |
+| file_name    | string | 文件名称（不含扩展名）       |
+| ext          | string | 文件扩展名（包含点号）       |
+| sha256_sum   | string | 文件散列值，十六进制小写字母 |
+
+### 列出所有资源
+
+GET `/resources`
+
+返回一个对象，key 是整数（即`resource_id`，不一定连续），value 是`资源`
+
+### 查看资源
+
+GET `/resources/{resource_id}`
+
+返回一个`资源`
+
+GET `/resources/{sha256_sum}`
+
+返回 `status 302`
+
+### 下载资源
+
+GET `/resources/{resource_id}/content`
+
+返回资源的二进制文件，文件名包含在标头 `Content-Disposition` 字段中
+
+### 上传资源
+
+POST `/resources/{file_name}{ext}`
+
+文件名与扩展名没有分隔符，例如：`POST /api/v1/resources/%e8%a1%a8%e6%83%85%e5%8c%85.jpg`
+
+请求体为二进制文件
+
+返回 `status 201` `code=0`：成功  
+返回 `status 200` `code=1`：资源已经存在，无需重复上传，返回已有的 `resource_id`
+
+上传资源前，可以先通过 `GET /resources/{sha256_sum}` 查询资源是否已存在
+
+### 删除资源
+
+DELETE `/resources/{resource_id}`
+
+返回 `code=0`
+
+### 修改资源
+
+只能修改资源的文件名，扩展名与散列值无法修改
+
+PATCH `/resources/{resource_id}`
+
+请求体为 `json`，只有 `file_name` 字段，例如：`{"file_name":"a better name"}`
+
+## 组
+
+对象结构：组
+
+| 字段         | 类型              | 含义     |
+| ------------ | ----------------- | -------- |
+| display_name | string            | 显示名称 |
+| items        | array\<object\*\> | 项目     |
+
+对象结构：项目
+
+| 字段 | 类型    | 含义                                                                                                           |
+| ---- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| type | string  | 项目类型<br>`rule` 消息规则<br>`trigger` 触发事件<br>`scheduler` 定时任务<br>`resource` 静态资源<br>`group` 组 |
+| id   | integer | 项目编号                                                                                                       |
 
 ## 模板测试
