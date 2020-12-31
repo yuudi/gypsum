@@ -4,6 +4,8 @@
 
 gypsum 是受到 [铃心自定义](http://myepk.club/) 的启发，基于 [ZeroBot](https://github.com/wdvxdr1123/ZeroBot) 的实现可视化控制台
 
+[预览版](https://github.com/yuudi/gypsum/releases/latest)
+
 ![预览图](./imgs/preview.png)
 
 交流 QQ 群：238627697

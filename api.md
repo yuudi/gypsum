@@ -8,30 +8,99 @@ base path: `/api/v1`
 
 ## 鉴权
 
-鉴权方式为 `Basic Auth`，详见 [MDN 文档](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Authentication)，一般来说可由浏览器自动处理
+（暂定）鉴权方式为 `Basic Auth`，详见 [MDN 文档](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Authentication)，一般来说可由浏览器自动处理
+
+## 组
+
+对象结构：组
+
+| 字段         | 类型              | 含义     |
+| ------------ | ----------------- | -------- |
+| display_name | string            | 显示名称 |
+| items        | array\<object\*\> | 项目     |
+
+对象结构：项目
+
+| 字段         | 类型    | 含义                          |
+| ------------ | ------- | ----------------------------- |
+| item_type    | string  | 项目类型<br>`rule` 消息规则<br>`trigger` 触发事件<br>`scheduler` 定时任务<br>`resource` 静态资源<br>`group` 组 |
+| item_id      | integer | 项目编号                      |
+| parent_group | integer | 所属组（`0` 表示不属于任何组） |
+
+### 列出所有组
+
+GET `/groups`
+
+返回一个对象，key 是整数（即`group_id`，不一定连续），value 是`组`
+
+### 查看组
+
+GET `/groups/{group_id}`
+
+返回一个`组`
+
+### 添加组
+
+POST `/groups`  
+POST `/groups/{group_id}/groups`
+
+如果使用第二种路由，则需要指定 `group_id` 为上级组（后面同理）
+
+请求体为 `json`，只有 `display_name` 字段，例如：`{"display_name":"my group"}`
+
+返回 `status 201` `code=0`
+
+### 移动组项目
+
+PUT `/groups/{group_id}/items/{item_id}`
+
+将一个项目移动至一个组  
+（一个项目只能属于一个组，`group_id=0` 表示不属于任何组）
+
+如果将组移动至其子组中，将返回 http 状态码 `422 Unprocessable Entity`
+
+### 导出组
+
+GET `/groups/{group_id}/archive`
+
+返回一个二进制文件，文件名包含在标头 `Content-Disposition` 字段中
+
+### 导入组
+
+POST `/groups/{group_id}`
+
+请求体为二进制文件，即由`导出`获得的文件。请求头需设置 `Content-Type: application/zip`
+
+返回 `status 201` `code=0` 或 `status 415`
+
+### 删除组
+
+DELETE `/groups/{group_id}`
+
+请求体为 `json`，`move` 值表示组中项目移动到的新组，默认值 `0`。例如：`{"move"=2}`。不可直接删除所有项目。
 
 ## 消息规则
 
 对象结构：消息规则
 
-| 字段         | 类型            | 含义                                                                                  |
-| ------------ | --------------- | ------------------------------------------------------------------------------------- |
-| display_name | string          | 显示名称                                                                              |
-| activate     | boolean         | 当前规则是否启用                                                                      |
-| message_type | integer\*       | 匹配的消息类型                                                                        |
-| group_id     | integer         | 匹配群，`0`表示所有                                                                   |
-| user_id      | integer         | 匹配 QQ 号，`0`表示所有                                                               |
+| 字段         | 类型            | 含义                                                                                                             |
+| ------------ | --------------- | ---------------------------------------------------------------------------------------------------------------- |
+| display_name | string          | 显示名称                                                                                                         |
+| activate     | boolean         | 当前规则是否启用                                                                                                 |
+| message_type | integer\*       | 匹配的消息类型                                                                                                   |
+| group_id     | integer         | 匹配群，`0`表示所有                                                                                              |
+| user_id      | integer         | 匹配 QQ 号，`0`表示所有                                                                                          |
 | matcher_type | integer         | 匹配方式<br/>`0` 完全匹配<br/>`1` 关键词匹配<br/>`2` 前缀匹配<br/>`3` 后缀匹配<br/>`4` 命令匹配<br/>`5` 正则匹配 |
-| only_at_me   | boolean         | 是否只有被 at 才会触发                                                                |
-| patterns     | array\<string\> | 匹配表达式的数组                                                                      |
-| response     | string          | 回复模板                                                                              |
-| priority     | integer         | 优先级                                                                                |
-| block        | boolean         | 是否阻止后续规则                                                                      |
+| only_at_me   | boolean         | 是否只有被 at 才会触发                                                                                           |
+| patterns     | array\<string\> | 匹配表达式的数组                                                                                                 |
+| response     | string          | 回复模板                                                                                                         |
+| priority     | integer         | 优先级                                                                                                           |
+| block        | boolean         | 是否阻止后续规则                                                                                                 |
 
 消息类型编号为
 
-| 类型         | 编号 |
-| ------------ | ---- |
+| 类型         | 编号   |
+| ------------ | ------ |
 | 好友消息     | 0x0001 |
 | 群临时消息   | 0x0002 |
 | 其他临时消息 | 0x0004 |
@@ -57,7 +126,8 @@ GET `/rules/{rule_id}`
 
 ### 添加规则
 
-POST `/rules`
+POST `/rules`  
+POST `/groups/{group_id}/rules`
 
 请求体为一条`规则`，如果匹配方式是正则匹配，那么 `pattern` 数组长度必须为 1
 
@@ -120,7 +190,8 @@ GET `/triggers/{trigger_id}`
 
 ### 添加事件规则
 
-POST `/triggers`
+POST `/triggers`  
+POST `/groups/{group_id}/triggers`
 
 请求体为一条`规则`
 
@@ -168,7 +239,8 @@ GET `/jobs/{job_id}`
 
 ### 添加任务
 
-POST `/jobs`
+POST `/jobs`  
+POST `/groups/{group_id}/jobs`
 
 请求体为一条`任务`
 
@@ -196,11 +268,11 @@ PUT `/jobs/{job_id}`
 
 对象结构：资源
 
-| 字段         | 类型   | 含义                         |
-| ------------ | ------ | ---------------------------- |
-| file_name    | string | 文件名称（不含扩展名）       |
-| ext          | string | 文件扩展名（包含点号）       |
-| sha256_sum   | string | 文件散列值，十六进制小写字母 |
+| 字段       | 类型   | 含义                         |
+| ---------- | ------ | ---------------------------- |
+| file_name  | string | 文件名称（不含扩展名）       |
+| ext        | string | 文件扩展名（包含点号）       |
+| sha256_sum | string | 文件散列值，十六进制小写字母 |
 
 ### 列出所有资源
 
@@ -226,7 +298,8 @@ GET `/resources/{resource_id}/content`
 
 ### 上传资源
 
-POST `/resources/{file_name}{ext}`
+POST `/resources/{file_name}{ext}`  
+POST `/groups/{group_id}/resources/{file_name}{ext}`
 
 文件名与扩展名没有分隔符，例如：`POST /api/v1/resources/%e8%a1%a8%e6%83%85%e5%8c%85.jpg`
 
@@ -235,7 +308,7 @@ POST `/resources/{file_name}{ext}`
 返回 `status 201` `code=0`：成功  
 返回 `status 200` `code=1`：资源已经存在，无需重复上传，返回已有的 `resource_id`
 
-上传资源前，可以先通过 `GET /resources/{sha256_sum}` 查询资源是否已存在
+上传资源前，可以先通过 `GET /resources/{sha256_sum}` 查询资源是否已存在（非必须）
 
 ### 删除资源
 
@@ -250,21 +323,5 @@ DELETE `/resources/{resource_id}`
 PATCH `/resources/{resource_id}`
 
 请求体为 `json`，只有 `file_name` 字段，例如：`{"file_name":"a better name"}`
-
-## 组
-
-对象结构：组
-
-| 字段         | 类型              | 含义     |
-| ------------ | ----------------- | -------- |
-| display_name | string            | 显示名称 |
-| items        | array\<object\*\> | 项目     |
-
-对象结构：项目
-
-| 字段 | 类型    | 含义                                                                                                           |
-| ---- | ------- | -------------------------------------------------------------------------------------------------------------- |
-| type | string  | 项目类型<br>`rule` 消息规则<br>`trigger` 触发事件<br>`scheduler` 定时任务<br>`resource` 静态资源<br>`group` 组 |
-| id   | integer | 项目编号                                                                                                       |
 
 ## 模板测试
