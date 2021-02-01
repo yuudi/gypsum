@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+    <meta charset="UTF-8">
+    <title>测试主页</title>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+    <script>
+        $(document).ready(function () {
+            $("#upload").click(function () {
+                let file = $('#file_upload')[0].files[0];
+                $.ajax({
+                    url: "/api/v1/groups",
+                    type: "post",
+                    data: file,
+                    contentType: "application/zip",
+                    processData: false,
+                    success: function (result) {
+                        alert(JSON.stringify(result));
+                    },
+                    error: function (result) {
+                        alert(JSON.stringify(result));
+                    },
+                });
+            });
+            $("#download_group").click(function () {
+                let group_id = $("#group_id")[0].valueAsNumber;
+                let plugin_name = $("#plugin_name")[0].value;
+                window.location = ("/api/v1/groups/" + group_id + "/archive?plugin_name=" + encodeURIComponent(plugin_name) + "&plugin_version=" + (+ new Date()));
+            });
+        });
+    </script>
+</head>
+
+<body>
+    <h1>测试主页</h1>
+    <div>
+        <a href="/api/v1/groups" target="_blank">查看所有组</a>
+    </div>
+    <br /><br />
+    <div>
+        组号: <input id="group_id" type="number"><br />
+        导出名：<input id="plugin_name" value="github.com/my-name/my-plugin"><br />
+        <button id="download_group">导出组</button>
+    </div>
+    <br /><br />
+    <input type="file" id="file_upload" accept=".zip">
+    <button id="upload">导入</button>
+</body>
+
+</html>

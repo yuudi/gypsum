@@ -220,6 +220,33 @@ func createTrigger(c *gin.Context) {
 		})
 		return
 	}
+	parentStr := c.Param("gid")
+	var parentID uint64
+	var parentGroup *Group
+	if len(parentStr) == 0 {
+		parentID = 0
+	} else {
+		var err error
+		parentID, err = strconv.ParseUint(parentStr, 10, 64)
+		if err != nil {
+			c.JSON(404, gin.H{
+				"code":    1000,
+				"message": "no such group",
+			})
+			return
+		}
+		var ok bool
+		parentGroup, ok = groups[parentID]
+		if !ok {
+			c.JSON(404, gin.H{
+				"code":    1000,
+				"message": "group not found",
+			})
+			return
+		}
+	}
+	trigger.ParentGroup = parentID
+	// syntax check
 	if err := checkTemplate(trigger.Response); err != nil {
 		c.JSON(422, gin.H{
 			"code":    2041,
@@ -227,7 +254,22 @@ func createTrigger(c *gin.Context) {
 		})
 		return
 	}
+	//save
 	cursor++
+	if parentGroup != nil {
+		parentGroup.Items = append(parentGroup.Items, Item{
+			ItemType: TriggerItem,
+			ItemID:   cursor,
+		})
+		if err := parentGroup.SaveToDB(parentID); err != nil {
+			log.Error(err)
+			c.JSON(500, gin.H{
+				"code":    3000,
+				"message": fmt.Sprintf("Server got itself into trouble: %s", err),
+			})
+			return
+		}
+	}
 	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,

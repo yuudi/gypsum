@@ -251,6 +251,13 @@ func createGroup(c *gin.Context) {
 			})
 			return
 		}
+		if parentID != 0 {
+			c.JSON(400, gin.H{
+				"code":    1400,
+				"message": "group in group are not supported yet",
+			})
+			return
+		}
 	}
 	group.ParentGroup = parentID
 
