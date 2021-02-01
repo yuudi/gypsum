@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+	<meta charset="UTF-8">
+	<title>测试主页</title>
+	<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
+	<script>
+		$(document).ready(function () {
+			$("#upload").click(function () {
+				let file = $('#file_upload')[0].files[0];
+				$.ajax({
+					url: "/api/v1/resources/" + file.name,
+					type: "post",
+					data: file,
+					processData: false,
+					success: function (result) {
+						alert(JSON.stringify(result));
+					},
+					error: function (result) {
+						alert(JSON.stringify(result));
+					},
+				});
+			});
+		});
+	</script>
+</head>
+
+<body>
+	<h1>测试主页</h1>
+	<div>
+		<a href="/api/v1/resources" target="_blank">查看所有资源</a>
+	</div>
+	<br /><br />
+	<input type="file" id="file_upload">
+	<button id="upload">上传</button>
+</body>
+
+</html>

@@ -57,25 +57,26 @@ type Rule struct {
 	DisplayName string      `json:"display_name"`
 	Active      bool        `json:"active"`
 	MessageType MessageType `json:"message_type"`
-	GroupID     int64       `json:"group_id"`
-	UserID      int64       `json:"user_id"`
+	GroupsID    []int64     `json:"groups_id"`
+	UsersID     []int64     `json:"users_id"`
 	MatcherType RuleType    `json:"matcher_type"`
 	Patterns    []string    `json:"patterns"`
 	OnlyAtMe    bool        `json:"only_at_me"`
 	Response    string      `json:"response"`
 	Priority    int         `json:"priority"`
 	Block       bool        `json:"block"`
+	ParentGroup uint64      `json:"-"`
 }
 
 var (
-	rules       map[uint64]Rule
+	rules       map[uint64]*Rule
 	zeroMatcher map[uint64]*zero.Matcher
 )
 
-func (h *Rule) ToBytes() ([]byte, error) {
+func (r *Rule) ToBytes() ([]byte, error) {
 	buffer := bytes.Buffer{}
 	encoder := gob.NewEncoder(&buffer)
-	if err := encoder.Encode(h); err != nil {
+	if err := encoder.Encode(r); err != nil {
 		return nil, err
 	}
 	return buffer.Bytes(), nil
@@ -83,16 +84,18 @@ func (h *Rule) ToBytes() ([]byte, error) {
 
 func RuleFromBytes(b []byte) (*Rule, error) {
 	r := &Rule{
+		DisplayName: "",
 		Active:      true,
 		MessageType: AllMessage,
-		GroupID:     0,
-		UserID:      0,
+		GroupsID:    []int64{},
+		UsersID:     []int64{},
 		MatcherType: FullMatch,
 		Patterns:    []string{},
 		OnlyAtMe:    false,
 		Response:    "",
 		Priority:    50,
 		Block:       true,
+		ParentGroup: 0,
 	}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
@@ -112,65 +115,76 @@ func typeRule(acceptType MessageType) zero.Rule {
 	}
 }
 
-func groupRule(groupID int64) zero.Rule {
-	if groupID == 0 {
+func groupsRule(groupsID []int64) zero.Rule {
+	if len(groupsID) == 0 {
 		return func(_ *zero.Event, _ zero.State) bool {
 			return true
 		}
 	}
 	return func(event *zero.Event, _ zero.State) bool {
-		return event.GroupID == groupID
-	}
-}
-func userRule(userID int64) zero.Rule {
-	if userID == 0 {
-		return func(_ *zero.Event, _ zero.State) bool {
-			return true
+		for _, i := range groupsID {
+			if i == event.GroupID {
+				return true
+			}
 		}
-	}
-	return func(event *zero.Event, _ zero.State) bool {
-		return event.UserID == userID
+		return false
 	}
 }
 
-func (h *Rule) Register(id uint64) error {
-	if !h.Active {
+func usersRule(usersID []int64) zero.Rule {
+	if len(usersID) == 0 {
+		return func(_ *zero.Event, _ zero.State) bool {
+			return true
+		}
+	}
+	return func(event *zero.Event, _ zero.State) bool {
+		for _, i := range usersID {
+			if i == event.UserID {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+func (r *Rule) Register(id uint64) error {
+	if !r.Active {
 		return nil
 	}
-	tmpl, err := pongo2.FromString(h.Response)
+	tmpl, err := pongo2.FromString(r.Response)
 	if err != nil {
 		log.Errorf("模板预处理出错：%s", err)
 		return err
 	}
-	rules := []zero.Rule{typeRule(h.MessageType)}
-	if h.GroupID != 0 {
-		rules = append(rules, groupRule(h.GroupID))
+	rules := []zero.Rule{typeRule(r.MessageType)}
+	if len(r.GroupsID) != 0 {
+		rules = append(rules, groupsRule(r.GroupsID))
 	}
-	if h.UserID != 0 {
-		rules = append(rules, userRule(h.UserID))
+	if len(r.UsersID) != 0 {
+		rules = append(rules, usersRule(r.UsersID))
 	}
-	if h.OnlyAtMe {
+	if r.OnlyAtMe {
 		rules = append(rules, zero.OnlyToMe)
 	}
 	var msgRule zero.Rule
-	switch h.MatcherType {
+	switch r.MatcherType {
 	case FullMatch:
-		msgRule = zero.FullMatchRule(h.Patterns...)
+		msgRule = zero.FullMatchRule(r.Patterns...)
 	case Keyword:
-		msgRule = zero.KeywordRule(h.Patterns...)
+		msgRule = zero.KeywordRule(r.Patterns...)
 	case Prefix:
-		msgRule = zero.PrefixRule(h.Patterns...)
+		msgRule = zero.PrefixRule(r.Patterns...)
 	case Suffix:
-		msgRule = zero.SuffixRule(h.Patterns...)
+		msgRule = zero.SuffixRule(r.Patterns...)
 	case Command:
-		msgRule = zero.CommandRule(h.Patterns...)
+		msgRule = zero.CommandRule(r.Patterns...)
 	case Regex:
-		msgRule = zero.RegexRule(h.Patterns[0])
+		msgRule = zero.RegexRule(r.Patterns[0])
 	default:
-		log.Errorf("Unknown type %#v", h.MatcherType)
-		return errors.New(fmt.Sprintf("Unknown type %#v", h.MatcherType))
+		log.Errorf("Unknown type %#v", r.MatcherType)
+		return errors.New(fmt.Sprintf("Unknown type %#v", r.MatcherType))
 	}
-	zeroMatcher[id] = zero.OnMessage(append(rules, msgRule)...).SetPriority(h.Priority).SetBlock(h.Block).Handle(templateRuleHandler(*tmpl))
+	zeroMatcher[id] = zero.OnMessage(append(rules, msgRule)...).SetPriority(r.Priority).SetBlock(r.Block).Handle(templateRuleHandler(*tmpl))
 	return nil
 }
 
@@ -215,7 +229,7 @@ func templateRuleHandler(tmpl pongo2.Template) zero.Handler {
 }
 
 func loadRules() {
-	rules = make(map[uint64]Rule)
+	rules = make(map[uint64]*Rule)
 	zeroMatcher = make(map[uint64]*zero.Matcher)
 	iter := db.NewIterator(util.BytesPrefix([]byte("gypsum-rules-")), nil)
 	defer func() {
@@ -232,12 +246,20 @@ func loadRules() {
 			log.Errorf("无法加载规则%d：%s", key, e)
 			continue
 		}
-		rules[key] = *r
+		rules[key] = r
 		if e := r.Register(key); e != nil {
 			log.Errorf("无法注册规则%d：%s", key, e)
 			continue
 		}
 	}
+}
+
+func (r *Rule) SaveToDB(idx uint64) error {
+	v, err := r.ToBytes()
+	if err != nil {
+		return err
+	}
+	return db.Put(append([]byte("gypsum-rules-"), U64ToBytes(idx)...), v, nil)
 }
 
 func checkRegex(pattern string) error {
@@ -247,6 +269,20 @@ func checkRegex(pattern string) error {
 
 func checkTemplate(template string) error {
 	_, err := pongo2.FromString(template)
+	return err
+}
+
+func (r *Rule) GetParentID() uint64 {
+	return r.ParentGroup
+}
+
+func (r *Rule) NewParent(selfID, parentID uint64) error {
+	v, err := r.ToBytes()
+	if err != nil {
+		return err
+	}
+	r.ParentGroup = parentID
+	err = db.Put(append([]byte("gypsum-rules-"), U64ToBytes(selfID)...), v, nil)
 	return err
 }
 
@@ -337,7 +373,7 @@ func createRule(c *gin.Context) {
 		})
 		return
 	}
-	rules[cursor] = rule
+	rules[cursor] = &rule
 	c.JSON(201, gin.H{
 		"code":    0,
 		"message": "ok",
@@ -464,7 +500,7 @@ func modifyRule(c *gin.Context) {
 		})
 		return
 	}
-	rules[ruleID] = newRule
+	rules[ruleID] = &newRule
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "ok",

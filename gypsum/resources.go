@@ -6,7 +6,7 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path"
 	"strconv"
@@ -19,12 +19,13 @@ import (
 )
 
 type Resource struct {
-	FileName  string `json:"file_name"`
-	Ext       string `json:"ext"`
-	Sha256Sum string `json:"sha256_sum"`
+	FileName    string `json:"file_name"`
+	Ext         string `json:"ext"`
+	Sha256Sum   string `json:"sha256_sum"`
+	ParentGroup uint64 `json:"-"`
 }
 
-var resources map[uint64]Resource
+var resources map[uint64]*Resource
 var resDir string // absolute path of resource directory
 
 func (r *Resource) ToBytes() ([]byte, error) {
@@ -37,13 +38,19 @@ func (r *Resource) ToBytes() ([]byte, error) {
 }
 
 func ResourceFromBytes(b []byte) (*Resource, error) {
-	r := &Resource{}
+	r := &Resource{
+		FileName:    "",
+		Ext:         "",
+		Sha256Sum:   "",
+		ParentGroup: 0,
+	}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
 	decoder := gob.NewDecoder(&buffer)
 	err := decoder.Decode(r)
 	return r, err
 }
+
 func loadResources() {
 	pwd, err := os.Getwd()
 	if err != nil {
@@ -63,7 +70,7 @@ func loadResources() {
 			panic("resource directory exists and is not directory")
 		}
 	}
-	resources = make(map[uint64]Resource)
+	resources = make(map[uint64]*Resource)
 	iter := db.NewIterator(util.BytesPrefix([]byte("gypsum-resources-")), nil)
 	defer func() {
 		iter.Release()
@@ -79,12 +86,34 @@ func loadResources() {
 			log.Errorf("无法加载资源%d：%s", key, e)
 			continue
 		}
-		resources[key] = *r
+		resources[key] = r
 	}
+}
+
+func (r *Resource) SaveToDB(idx uint64) error {
+	v, err := r.ToBytes()
+	if err != nil {
+		return err
+	}
+	return db.Put(append([]byte("gypsum-resources-"), U64ToBytes(idx)...), v, nil)
 }
 
 func resourcePath(filename string) string {
 	return path.Join(resDir, filename)
+}
+
+func (r *Resource) GetParentID() uint64 {
+	return r.ParentGroup
+}
+
+func (r *Resource) NewParent(selfID, parentID uint64) error {
+	v, err := r.ToBytes()
+	if err != nil {
+		return err
+	}
+	r.ParentGroup = parentID
+	err = db.Put(append([]byte("gypsum-resources-"), U64ToBytes(selfID)...), v, nil)
+	return err
 }
 
 func resourceIDByHash(sum string) (uint64, bool) {
@@ -174,29 +203,16 @@ func uploadResource(c *gin.Context) {
 		fileName = fileFullName[:len(fileFullName)-len(ext)]
 	}
 	bodyReader := c.Request.Body
-	body, err := ioutil.ReadAll(bodyReader)
+	body, err := io.ReadAll(bodyReader)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"code":    6000,
 			"message": fmt.Sprintf("error when reading request body: %s", err),
 		})
+		return
 	}
 	hashBytes := sha256.Sum256(body)
 	hashHex := hex.EncodeToString(hashBytes[:])
-	if err := ioutil.WriteFile(path.Join(resDir, hashHex+ext), body, 0444); err != nil {
-		c.JSON(500, gin.H{
-			"code":    6000,
-			"message": fmt.Sprintf("error when writing file: %s", err),
-		})
-	}
-	cursor++
-	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
-		c.JSON(500, gin.H{
-			"code":    3000,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
-		return
-	}
 	// check if resource already exist
 	idx, err := db.Get(append([]byte("gypsum-resources_hash-"), hashBytes[:]...), nil)
 	if err == nil {
@@ -218,6 +234,21 @@ func uploadResource(c *gin.Context) {
 		}
 	}
 	// not exist, go on
+	if err := os.WriteFile(path.Join(resDir, hashHex+ext), body, 0444); err != nil {
+		c.JSON(500, gin.H{
+			"code":    6000,
+			"message": fmt.Sprintf("error when writing file: %s", err),
+		})
+		return
+	}
+	cursor++
+	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+		c.JSON(500, gin.H{
+			"code":    3000,
+			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
+		})
+		return
+	}
 	resource := Resource{
 		FileName:  fileName,
 		Ext:       ext,
@@ -245,7 +276,7 @@ func uploadResource(c *gin.Context) {
 		})
 		return
 	}
-	resources[cursor] = resource
+	resources[cursor] = &resource
 	c.JSON(201, gin.H{
 		"code":        0,
 		"message":     "ok",
@@ -279,9 +310,14 @@ func deleteResource(c *gin.Context) {
 		})
 		return
 	}
+	c.JSON(200, gin.H{
+		"code":    0,
+		"message": "deleted",
+	})
+	return
 }
 
-type NamePatch struct {
+type fileNamePatch struct {
 	FileName string `json:"file_name"`
 }
 
@@ -303,7 +339,7 @@ func renameResource(c *gin.Context) {
 		})
 		return
 	}
-	np := NamePatch{}
+	np := fileNamePatch{}
 	if err := c.BindJSON(&np); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
@@ -312,15 +348,7 @@ func renameResource(c *gin.Context) {
 		return
 	}
 	r.FileName = np.FileName
-	v, err := r.ToBytes()
-	if err != nil {
-		c.JSON(400, gin.H{
-			"code":    2000,
-			"message": fmt.Sprintf("converting error: %s", err),
-		})
-		return
-	}
-	if err = db.Put(append([]byte("gypsum-resources-"), U64ToBytes(resourceID)...), v, nil); err != nil {
+	if err = r.SaveToDB(resourceID); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

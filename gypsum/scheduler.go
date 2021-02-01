@@ -24,11 +24,12 @@ type Job struct {
 	Once        bool    `json:"once"`
 	CronSpec    string  `json:"cron_spec"`
 	Action      string  `json:"action"`
+	ParentGroup uint64  `json:"-"`
 }
 
 var (
 	scheduler *cron.Cron
-	jobs      map[uint64]Job
+	jobs      map[uint64]*Job
 	entries   map[uint64]cron.EntryID
 )
 
@@ -45,12 +46,14 @@ func (j *Job) ToBytes() ([]byte, error) {
 
 func JobFromBytes(b []byte) (*Job, error) {
 	j := &Job{
-		Active:   true,
-		GroupID:  []int64{},
-		UserID:   []int64{},
-		Once:     false,
-		CronSpec: "0 0 * * *",
-		Action:   "",
+		DisplayName: "",
+		Active:      true,
+		GroupID:     []int64{},
+		UserID:      []int64{},
+		Once:        false,
+		CronSpec:    "0 0 * * *",
+		Action:      "",
+		ParentGroup: 0,
 	}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
@@ -118,7 +121,7 @@ func (j *Job) Register(id uint64) error {
 
 func loadJobs() {
 	scheduler = cron.New()
-	jobs = make(map[uint64]Job)
+	jobs = make(map[uint64]*Job)
 	entries = make(map[uint64]cron.EntryID)
 	iter := db.NewIterator(util.BytesPrefix([]byte("gypsum-jobs-")), nil)
 	defer func() {
@@ -135,13 +138,35 @@ func loadJobs() {
 			log.Errorf("无法加载任务%d：%s", key, e)
 			continue
 		}
-		jobs[key] = *j
+		jobs[key] = j
 		if e := j.Register(key); e != nil {
 			log.Errorf("无法注册任务%d：%s", key, e)
 			continue
 		}
 	}
 	go scheduler.Start()
+}
+
+func (j *Job) SaveToDB(idx uint64) error {
+	v, err := j.ToBytes()
+	if err != nil {
+		return err
+	}
+	return db.Put(append([]byte("gypsum-jobs-"), U64ToBytes(idx)...), v, nil)
+}
+
+func (j *Job) GetParentID() uint64 {
+	return j.ParentGroup
+}
+
+func (j *Job) NewParent(selfID, parentID uint64) error {
+	v, err := j.ToBytes()
+	if err != nil {
+		return err
+	}
+	j.ParentGroup = parentID
+	err = db.Put(append([]byte("gypsum-jobs-"), U64ToBytes(selfID)...), v, nil)
+	return err
 }
 
 func getJobs(c *gin.Context) {
@@ -156,17 +181,17 @@ func getJobByID(c *gin.Context) {
 			"code":    1000,
 			"message": "no such job",
 		})
-	} else {
-		r, ok := jobs[jobID]
-		if ok {
-			c.JSON(200, r)
-		} else {
-			c.JSON(404, gin.H{
-				"code":    1000,
-				"message": "no such job",
-			})
-		}
+		return
 	}
+	r, ok := jobs[jobID]
+	if ok {
+		c.JSON(200, r)
+		return
+	}
+	c.JSON(404, gin.H{
+		"code":    1000,
+		"message": "no such job",
+	})
 }
 
 func createJob(c *gin.Context) {
@@ -178,6 +203,22 @@ func createJob(c *gin.Context) {
 		})
 		return
 	}
+	parentStr := c.Param("gid")
+	var parentID uint64
+	if len(parentStr) == 0 {
+		parentID = 0
+	} else {
+		var err error
+		parentID, err = strconv.ParseUint(parentStr, 10, 64)
+		if err != nil {
+			c.JSON(404, gin.H{
+				"code":    1000,
+				"message": "no such group",
+			})
+			return
+		}
+	}
+	job.ParentGroup = parentID
 	// check spec syntax
 	_, err := specParser.Parse(job.CronSpec)
 	if err != nil {
@@ -196,6 +237,7 @@ func createJob(c *gin.Context) {
 	}
 	cursor++
 	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+		log.Error(err)
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -224,7 +266,7 @@ func createJob(c *gin.Context) {
 		})
 		return
 	}
-	jobs[cursor] = job
+	jobs[cursor] = &job
 	c.JSON(201, gin.H{
 		"code":    0,
 		"message": "ok",
@@ -336,7 +378,7 @@ func modifyJob(c *gin.Context) {
 		})
 		return
 	}
-	jobs[jobID] = newJob
+	jobs[jobID] = &newJob
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "ok",

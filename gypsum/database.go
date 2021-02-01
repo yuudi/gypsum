@@ -26,6 +26,7 @@ func initDb() (err error) {
 }
 
 func loadData() error {
+	loadGroups()
 	loadRules()
 	loadTriggers()
 	loadJobs()

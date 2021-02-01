@@ -14,18 +14,19 @@ base path: `/api/v1`
 
 对象结构：组
 
-| 字段         | 类型              | 含义     |
-| ------------ | ----------------- | -------- |
-| display_name | string            | 显示名称 |
-| items        | array\<object\*\> | 项目     |
+| 字段           | 类型              | 含义                       |
+| -------------- | ----------------- | -------------------------- |
+| display_name   | string            | 显示名称                   |
+| plugin_name    | string            | （仅导入的组）插件名       |
+| plugin_version | integer           | （仅导入的组）插件数字版本 |
+| items          | array\<object\*\> | 项目                       |
 
 对象结构：项目
 
-| 字段         | 类型    | 含义                          |
-| ------------ | ------- | ----------------------------- |
-| item_type    | string  | 项目类型<br>`rule` 消息规则<br>`trigger` 触发事件<br>`scheduler` 定时任务<br>`resource` 静态资源<br>`group` 组 |
-| item_id      | integer | 项目编号                      |
-| parent_group | integer | 所属组（`0` 表示不属于任何组） |
+| 字段      | 类型    | 含义                                                                                                           |
+| --------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| item_type | string  | 项目类型<br>`rule` 消息规则<br>`trigger` 触发事件<br>`scheduler` 定时任务<br>`resource` 静态资源<br>`group` 组 |
+| item_id   | integer | 项目编号                                                                                                       |
 
 ### 列出所有组
 
@@ -52,7 +53,7 @@ POST `/groups/{group_id}/groups`
 
 ### 移动组项目
 
-PUT `/groups/{group_id}/items/{item_id}`
+PUT `/groups/{group_id}/items/{item_type}/{item_id}`
 
 将一个项目移动至一个组  
 （一个项目只能属于一个组，`group_id=0` 表示不属于任何组）
@@ -63,13 +64,21 @@ PUT `/groups/{group_id}/items/{item_id}`
 
 GET `/groups/{group_id}/archive`
 
-返回一个二进制文件，文件名包含在标头 `Content-Disposition` 字段中
+参数：
+
+`plugin_name` 导出插件的名称，用于导入时识别相同插件，使用域名加路径（不带`http://`），如无域名则可用 `github.com` 加用户名加插件名，如 `github.com/yuudi/gypsum`  
+`plugin_version` 导出插件的数字版本，用于导入时识别版本，任意递增数字即可，如时间戳
+
+例如 `GET /api/v1/groups/{group_id}/archive?plugin_name=github.com%2Fyuudi%2Fgypsum&plugin_version=1`
+
+返回一个二进制文件（zip 压缩包）
 
 ### 导入组
 
-POST `/groups/{group_id}`
+POST `/groups`  
+POST `/groups/{group_id}/groups`
 
-请求体为二进制文件，即由`导出`获得的文件。请求头需设置 `Content-Type: application/zip`
+请求体为二进制文件，即由`导出`获得的文件。请求头需设置 `Content-Type: application/zip`，否则会被视为[添加组](#添加组)
 
 返回 `status 201` `code=0` 或 `status 415`
 
@@ -77,25 +86,33 @@ POST `/groups/{group_id}`
 
 DELETE `/groups/{group_id}`
 
-请求体为 `json`，`move` 值表示组中项目移动到的新组，默认值 `0`。例如：`{"move"=2}`。不可直接删除所有项目。
+请求体为 `json`，`move_to` 值表示组中项目移动到的新组，默认值 `0`。例如：`{"move_to"=2}`。不可直接删除所有项目。
+
+### 修改组
+
+只能修改组名
+
+PATCH `/groups/{group_id}`
+
+请求体为 `json`，只有 `display_name` 字段，例如：`{"display_name":"new group name"}`
 
 ## 消息规则
 
 对象结构：消息规则
 
-| 字段         | 类型            | 含义                                                                                                             |
-| ------------ | --------------- | ---------------------------------------------------------------------------------------------------------------- |
-| display_name | string          | 显示名称                                                                                                         |
-| activate     | boolean         | 当前规则是否启用                                                                                                 |
-| message_type | integer\*       | 匹配的消息类型                                                                                                   |
-| group_id     | integer         | 匹配群，`0`表示所有                                                                                              |
-| user_id      | integer         | 匹配 QQ 号，`0`表示所有                                                                                          |
-| matcher_type | integer         | 匹配方式<br/>`0` 完全匹配<br/>`1` 关键词匹配<br/>`2` 前缀匹配<br/>`3` 后缀匹配<br/>`4` 命令匹配<br/>`5` 正则匹配 |
-| only_at_me   | boolean         | 是否只有被 at 才会触发                                                                                           |
-| patterns     | array\<string\> | 匹配表达式的数组                                                                                                 |
-| response     | string          | 回复模板                                                                                                         |
-| priority     | integer         | 优先级                                                                                                           |
-| block        | boolean         | 是否阻止后续规则                                                                                                 |
+| 字段         | 类型             | 含义                                                                                                             |
+| ------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
+| display_name | string           | 显示名称                                                                                                         |
+| activate     | boolean          | 当前规则是否启用                                                                                                 |
+| message_type | integer\*        | 匹配的消息类型                                                                                                   |
+| groups_id    | array\<integer\> | 匹配群，留空表示所有                                                                                             |
+| users_id     | array\<integer\> | 匹配 QQ 号，留空表示所有                                                                                         |
+| matcher_type | integer          | 匹配方式<br/>`0` 完全匹配<br/>`1` 关键词匹配<br/>`2` 前缀匹配<br/>`3` 后缀匹配<br/>`4` 命令匹配<br/>`5` 正则匹配 |
+| only_at_me   | boolean          | 是否只有被 at 才会触发                                                                                           |
+| patterns     | array\<string\>  | 匹配表达式的数组                                                                                                 |
+| response     | string           | 回复模板                                                                                                         |
+| priority     | integer          | 优先级                                                                                                           |
+| block        | boolean          | 是否阻止后续规则                                                                                                 |
 
 消息类型编号为
 
@@ -155,16 +172,16 @@ PUT `/rules/{rule_id}`
 
 对象结构：事件规则
 
-| 字段         | 类型     | 含义                    |
-| ------------ | -------- | ----------------------- |
-| display_name | string   | 显示名称                |
-| activate     | boolean  | 当前规则是否启用        |
-| group_id     | integer  | 匹配群，`0`表示所有     |
-| user_id      | integer  | 匹配 QQ 号，`0`表示所有 |
-| trigger_type | string\* | 触发事件                |
-| response     | string   | 回复模板                |
-| priority     | integer  | 优先级                  |
-| block        | boolean  | 是否阻止后续规则        |
+| 字段         | 类型             | 含义                     |
+| ------------ | ---------------- | ------------------------ |
+| display_name | string           | 显示名称                 |
+| activate     | boolean          | 当前规则是否启用         |
+| groups_id    | array\<integer\> | 匹配群，留空表示所有     |
+| users_id     | array\<integer\> | 匹配 QQ 号，留空表示所有 |
+| trigger_type | string\*         | 触发事件                 |
+| response     | string           | 回复模板                 |
+| priority     | integer          | 优先级                   |
+| block        | boolean          | 是否阻止后续规则         |
 
 触发事件是一个字符串，格式为 `<detail-type>[/<sub-type>]`
 

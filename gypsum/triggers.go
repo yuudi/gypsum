@@ -19,18 +19,19 @@ import (
 type TriggerCategory int
 
 type Trigger struct {
-	DisplayName string `json:"display_name"`
-	Active      bool   `json:"active"`
-	GroupID     int64  `json:"group_id"`
-	UserID      int64  `json:"user_id"`
-	TriggerType string `json:"trigger_type"`
-	Response    string `json:"response"`
-	Priority    int    `json:"priority"`
-	Block       bool   `json:"block"`
+	DisplayName string  `json:"display_name"`
+	Active      bool    `json:"active"`
+	GroupsID    []int64 `json:"groups_id"`
+	UsersID     []int64 `json:"users_id"`
+	TriggerType string  `json:"trigger_type"`
+	Response    string  `json:"response"`
+	Priority    int     `json:"priority"`
+	Block       bool    `json:"block"`
+	ParentGroup uint64  `json:"-"`
 }
 
 var (
-	triggers    map[uint64]Trigger
+	triggers    map[uint64]*Trigger
 	zeroTrigger map[uint64]*zero.Matcher
 )
 
@@ -45,13 +46,15 @@ func (t *Trigger) ToBytes() ([]byte, error) {
 
 func TriggerFromByte(b []byte) (*Trigger, error) {
 	t := &Trigger{
+		DisplayName: "",
 		Active:      true,
-		GroupID:     0,
-		UserID:      0,
+		GroupsID:    []int64{},
+		UsersID:     []int64{},
 		TriggerType: "",
 		Response:    "",
 		Priority:    50,
 		Block:       true,
+		ParentGroup: 0,
 	}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
@@ -60,15 +63,15 @@ func TriggerFromByte(b []byte) (*Trigger, error) {
 	return t, err
 }
 
-func noticeRule(noticeType string) zero.Rule {
-	ntype := strings.SplitN(noticeType, "/", 2)
-	if len(ntype) == 1 {
+func noticeRule(noticeTypeStr string) zero.Rule {
+	noticeType := strings.SplitN(noticeTypeStr, "/", 2)
+	if len(noticeType) == 1 {
 		return func(event *zero.Event, _ zero.State) bool {
-			return event.DetailType == ntype[0]
+			return event.DetailType == noticeType[0]
 		}
 	}
 	return func(event *zero.Event, _ zero.State) bool {
-		return event.DetailType == ntype[0] && event.SubType == ntype[1]
+		return event.DetailType == noticeType[0] && event.SubType == noticeType[1]
 	}
 }
 
@@ -81,7 +84,7 @@ func (t *Trigger) Register(id uint64) error {
 		log.Errorf("模板预处理出错：%s", err)
 		return err
 	}
-	zeroTrigger[id] = zero.OnNotice(noticeRule(t.TriggerType), groupRule(t.GroupID), userRule(t.UserID)).SetPriority(t.Priority).SetBlock(t.Block).Handle(templateTriggerHandler(*tmpl))
+	zeroTrigger[id] = zero.OnNotice(noticeRule(t.TriggerType), groupsRule(t.GroupsID), usersRule(t.UsersID)).SetPriority(t.Priority).SetBlock(t.Block).Handle(templateTriggerHandler(*tmpl))
 	return nil
 }
 
@@ -136,7 +139,7 @@ func templateTriggerHandler(tmpl pongo2.Template) zero.Handler {
 }
 
 func loadTriggers() {
-	triggers = make(map[uint64]Trigger)
+	triggers = make(map[uint64]*Trigger)
 	zeroTrigger = make(map[uint64]*zero.Matcher)
 	iter := db.NewIterator(util.BytesPrefix([]byte("gypsum-triggers-")), nil)
 	defer func() {
@@ -153,12 +156,34 @@ func loadTriggers() {
 			log.Errorf("无法加载规则%d：%s", key, e)
 			continue
 		}
-		triggers[key] = *t
+		triggers[key] = t
 		if e := t.Register(key); e != nil {
 			log.Errorf("无法注册规则%d：%s", key, e)
 			continue
 		}
 	}
+}
+
+func (t *Trigger) GetParentID() uint64 {
+	return t.ParentGroup
+}
+
+func (t *Trigger) SaveToDB(idx uint64) error {
+	v, err := t.ToBytes()
+	if err != nil {
+		return err
+	}
+	return db.Put(append([]byte("gypsum-triggers-"), U64ToBytes(idx)...), v, nil)
+}
+
+func (t *Trigger) NewParent(selfID, parentID uint64) error {
+	v, err := t.ToBytes()
+	if err != nil {
+		return err
+	}
+	t.ParentGroup = parentID
+	err = db.Put(append([]byte("gypsum-triggers-"), U64ToBytes(selfID)...), v, nil)
+	return err
 }
 
 func getTriggers(c *gin.Context) {
@@ -232,7 +257,7 @@ func createTrigger(c *gin.Context) {
 		})
 		return
 	}
-	triggers[cursor] = trigger
+	triggers[cursor] = &trigger
 	c.JSON(201, gin.H{
 		"code":       0,
 		"message":    "ok",
@@ -252,28 +277,30 @@ func deleteTrigger(c *gin.Context) {
 		return
 	}
 	oldTrigger, ok := triggers[triggerID]
-	if ok {
-		delete(triggers, triggerID)
-		if err := db.Delete(append([]byte("gypsum-triggers-"), U64ToBytes(triggerID)...), nil); err != nil {
-			c.JSON(500, gin.H{
-				"code":    3001,
-				"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-			})
-			return
-		}
-		if oldTrigger.Active {
-			zeroTrigger[triggerID].Delete()
-		}
-		c.JSON(200, gin.H{
-			"code":    0,
-			"message": "deleted",
+	if !ok {
+		c.JSON(404, gin.H{
+			"code":    1000,
+			"message": "no such trigger",
 		})
 		return
 	}
-	c.JSON(404, gin.H{
-		"code":    1000,
-		"message": "no such trigger",
+
+	delete(triggers, triggerID)
+	if err := db.Delete(append([]byte("gypsum-triggers-"), U64ToBytes(triggerID)...), nil); err != nil {
+		c.JSON(500, gin.H{
+			"code":    3001,
+			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
+		})
+		return
+	}
+	if oldTrigger.Active {
+		zeroTrigger[triggerID].Delete()
+	}
+	c.JSON(200, gin.H{
+		"code":    0,
+		"message": "deleted",
 	})
+	return
 }
 
 func modifyTrigger(c *gin.Context) {
@@ -342,7 +369,7 @@ func modifyTrigger(c *gin.Context) {
 		})
 		return
 	}
-	triggers[triggerID] = newTrigger
+	triggers[triggerID] = &newTrigger
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "ok",

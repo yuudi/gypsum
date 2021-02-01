@@ -15,12 +15,10 @@ builds:
         goarch: 386
       - goos: darwin
         goarch: arm
-      - goos: darwin
+      - goarm: windows
+        goarch: arm
+      - goarm: windows
         goarch: arm64
-      - goarm: windows
-        gomips: arm
-      - goarm: windows
-        gomips: arm64
 archives:
   - replacements:
       darwin: macOS
@@ -31,7 +29,6 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
-    files:
-      - public/*
+    files: []
 checksum:
   disable: true

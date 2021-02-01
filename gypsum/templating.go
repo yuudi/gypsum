@@ -45,7 +45,7 @@ func initTemplating() error {
 	return nil
 }
 
-var cqEscape = strings.NewReplacer("&", "&amp;","[", "&#91;","]", "&#93;",",", "&#44;")
+var cqEscape = strings.NewReplacer("&", "&amp;", "[", "&#91;", "]", "&#93;", ",", "&#44;")
 
 func filterEscapeCQCode(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(cqEscape.Replace(in.String())), nil

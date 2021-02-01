@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 )
 
@@ -44,4 +45,13 @@ func ToFloat(unk interface{}) (float64, error) {
 	default:
 		return 0, errors.New(fmt.Sprintf("error: cannot accept %#v as float", unk))
 	}
+}
+
+var nonAsciiPattern *regexp.Regexp
+
+func ReplaceFilename(s, r string) string {
+	if nonAsciiPattern == nil {
+		nonAsciiPattern = regexp.MustCompile("[^\\w\\-]")
+	}
+	return nonAsciiPattern.ReplaceAllLiteralString(s, r)
 }

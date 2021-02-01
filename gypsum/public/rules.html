@@ -6,11 +6,18 @@
 	<title>测试主页</title>
 	<script src="https://cdn.jsdelivr.net/npm/jquery@3.5.1/dist/jquery.min.js"></script>
 	<script>
+		function wrap_or_empty(value, empty_value) {
+			if (value === empty_value) {
+				return []
+			} else {
+				return [value]
+			}
+		}
 		function getForm() {
 			let obj = { message_type: 0xffffffff };
 			obj.active = $("input[name='active']:checked").val() == "true";
-			obj.group_id = $("#group_id")[0].valueAsNumber;
-			obj.user_id = $("#user_id")[0].valueAsNumber;
+			obj.groups_id = wrap_or_empty($("#group_id")[0].valueAsNumber, 0);
+			obj.users_id = wrap_or_empty($("#user_id")[0].valueAsNumber, 0);
 			obj.matcher_type = $("#matcher_type")[0].valueAsNumber;
 			obj.patterns = [$("#pattern")[0].value];
 			obj.only_at_me = $("#only_at_me")[0].checked;
@@ -20,7 +27,6 @@
 			return obj;
 		}
 		$(document).ready(function () {
-			alert("此页面仅供测试，未作输入验证，任何非法输入都可能导致程序崩溃");
 			$("#add_rule").click(function () {
 				$.post({
 					url: "/api/v1/rules",
@@ -47,7 +53,7 @@
 <body>
 	<h1>测试主页</h1>
 	<div>
-		<a href="/api/v1/rules" target="_blank">查看所有规则</a>
+		<a href="rules_viewer.html" target="_blank">查看所有规则</a>
 	</div>
 	<br /><br />
 	<div>
