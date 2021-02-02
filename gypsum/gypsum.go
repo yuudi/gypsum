@@ -1,7 +1,7 @@
 package gypsum
 
 import (
-	"os"
+	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	zero "github.com/wdvxdr1123/ZeroBot"
@@ -19,7 +19,13 @@ var Config = struct {
 	"admin",
 }
 
+var (
+	gypsumVersion = "0.0.0-dev"
+	gypsumCommit  = "none"
+)
+
 func init() {
+	fmt.Printf("gypsum %s, commit %s\n\n", gypsumVersion, gypsumCommit)
 	zero.RegisterPlugin(&gypsumPlugin{}) // 注册插件
 }
 
@@ -29,14 +35,14 @@ func (_ *gypsumPlugin) GetPluginInfo() zero.PluginInfo { // 返回插件信息
 	return zero.PluginInfo{
 		Author:     "yuudi",
 		PluginName: "石膏自定义",
-		Version:    "v" + os.Getenv("GYPSUM_VERSION"),
+		Version:    "v" + gypsumVersion,
 		Details:    "石膏自定义",
 	}
 }
 
 func (_ *gypsumPlugin) Start() { // 插件主体
 	if err := initTemplating(); err != nil {
-		log.Errorf("lua引擎初始化错误：%s", err)
+		log.Errorf("pongo2引擎初始化错误：%s", err)
 		return
 	}
 	if err := initDb(); err != nil {

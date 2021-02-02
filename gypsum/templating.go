@@ -15,19 +15,21 @@ import (
 	"github.com/yuudi/gypsum/gypsum/luatag"
 )
 
-// const (
-// 	kindInteger = reflect.Int | reflect.Int8 | reflect.Int16 | reflect.Int32 | reflect.Int64 | reflect.Uint | reflect.Uint8 | reflect.Uint16 | reflect.Uint32 | reflect.Uint64
-// 	kindQQID    = reflect.String | reflect.Int | reflect.Int8 | reflect.Int16 | reflect.Int32 | reflect.Int64 | reflect.Uint | reflect.Uint8 | reflect.Uint16 | reflect.Uint32 | reflect.Uint64
-// )
-
 func initTemplating() error {
-	// register filters
-	if err := pongo2.RegisterFilter("escq", filterEscapeCQCode); err != nil {
+	// replace default HTML filter to CQ filter
+	if err := pongo2.ReplaceFilter("escape", filterEscapeCQCode); err != nil {
 		return err
 	}
 
-	// disable HTML auto-escape
-	pongo2.SetAutoescape(false)
+	// enable auto-escape
+	pongo2.SetAutoescape(true)
+
+	if err := pongo2.RegisterFilter("cq", filterNoFilter); err != nil {
+		return err
+	}
+	if err := pongo2.RegisterFilter("silence", filterSilence); err != nil {
+		return err
+	}
 
 	// register functions
 	pongo2.Globals["at"] = at
@@ -35,11 +37,13 @@ func initTemplating() error {
 	pongo2.Globals["image"] = image
 	pongo2.Globals["dynamic_image"] = dynamicImage
 	pongo2.Globals["sleep"] = sleep
+	pongo2.Globals["random_int"] = randomInt
 	pongo2.Globals["db_get"] = dbGet
 	pongo2.Globals["db_put"] = dbPut
 
 	// register lua
 	if err := pongo2.RegisterTag("lua", luatag.TagLuaParser); err != nil {
+		log.Errorf("lua引擎初始化错误：%s", err)
 		return err
 	}
 	return nil
@@ -47,8 +51,17 @@ func initTemplating() error {
 
 var cqEscape = strings.NewReplacer("&", "&amp;", "[", "&#91;", "]", "&#93;", ",", "&#44;")
 
-func filterEscapeCQCode(in *pongo2.Value, param *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+func filterEscapeCQCode(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(cqEscape.Replace(in.String())), nil
+}
+
+// no-escape filter (same as "safe" filter)
+func filterNoFilter(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	return in, nil
+}
+
+func filterSilence(_ *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	return pongo2.AsValue(nil), nil
 }
 
 func at(qq ...interface{}) string {
@@ -88,12 +101,43 @@ func sleep(duration interface{}) string {
 	return ""
 }
 
-func randomInt(min, max interface{}) int {
-	rand.Intn(100)
-	return 0
+func randomInt(input ...int) int {
+	var min, max int
+	switch len(input) {
+	case 0:
+		min = 0
+		max = 99
+	case 1:
+		min = 0
+		max = input[0]
+	case 2:
+		min = input[0]
+		max = input[1]
+	default:
+		log.Warn("too many argument for random")
+		min = input[0]
+		max = input[1]
+	}
+	return rand.Intn(max) + min
 }
 
-func dbGet(key interface{}) interface{} {
+type ValueType int
+
+const (
+	IntValueType ValueType = iota
+	StrValueType
+)
+
+type StoredValue struct {
+	ValueType ValueType
+	IntValue  int
+	StrValue  string
+}
+
+func dbGet(key interface{}, defaultValue ...interface{}) interface{} {
+	if len(defaultValue) > 1 {
+		log.Warn("too many arguments for calling db_get")
+	}
 	var bytesKey []byte
 	switch key.(type) {
 	case string:
@@ -104,22 +148,39 @@ func dbGet(key interface{}) interface{} {
 		log.Errorf("cannot use %#v (%T) as database key", key, key)
 		return nil
 	}
-	bytesData, err := db.Get(append([]byte("gypsum-userDB-"), bytesKey...), nil)
-	if err == leveldb.ErrNotFound {
+	bytesData, err := db.Get(append([]byte("gypsum-userDB-p-"), bytesKey...), nil)
+	if err != nil {
+		if err == leveldb.ErrNotFound {
+			log.Warnf("cannot find key in database: %v", key)
+			if len(defaultValue) == 0 {
+				return nil
+			} else {
+				return defaultValue[0]
+			}
+		}
+		log.Error(err)
 		return nil
 	}
-	var data interface{}
+	var data StoredValue
 	buffer := bytes.Buffer{}
 	buffer.Write(bytesData)
 	decoder := gob.NewDecoder(&buffer)
-	if err := decoder.Decode(data); err != nil {
+	if err := decoder.Decode(&data); err != nil {
 		log.Errorf("error when reading data from database: %s", err)
 		return nil
 	}
-	return data
+	switch data.ValueType {
+	case IntValueType:
+		return data.IntValue
+	case StrValueType:
+		return data.StrValue
+	default:
+		log.Errorf("Unknown value type from StoredValue: %v", data.ValueType)
+		return nil
+	}
 }
 
-func dbPut(key interface{}, value interface{}) {
+func dbPut(key, value interface{}) *int {
 	var bytesKey []byte
 	switch key.(type) {
 	case string:
@@ -129,14 +190,30 @@ func dbPut(key interface{}, value interface{}) {
 	default:
 		log.Errorf("cannot use %#v (%T) as database key", key, key)
 	}
+	var valueStore *StoredValue
+	switch value.(type) {
+	case string:
+		valueStore = &StoredValue{
+			ValueType: StrValueType,
+			StrValue:  value.(string),
+		}
+	case int:
+		valueStore = &StoredValue{
+			ValueType: IntValueType,
+			IntValue:  value.(int),
+		}
+	default:
+		log.Errorf("cannot store %#v (%T) to database", value, value)
+	}
 	buffer := bytes.Buffer{}
 	encoder := gob.NewEncoder(&buffer)
-	if err := encoder.Encode(value); err != nil {
-		log.Errorf("error when encode %#v (%T) as bytes: %s", value, value, err)
-		return
+	if err := encoder.Encode(valueStore); err != nil {
+		log.Errorf("error when encode valueStore as bytes: %s", err)
+		return nil
 	}
-	if err := db.Put(append([]byte("gypsum-userDB-"), bytesKey...), buffer.Bytes(), nil); err != nil {
+	if err := db.Put(append([]byte("gypsum-userDB-p-"), bytesKey...), buffer.Bytes(), nil); err != nil {
 		log.Errorf("error when put value to database %s", err)
-		return
+		return nil
 	}
+	return nil
 }

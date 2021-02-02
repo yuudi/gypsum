@@ -137,6 +137,8 @@ github.com/wdvxdr1123/ZeroBot v0.0.0-20201227072627-13a68a4cf442 h1:6fK2bmcEicEL
 github.com/wdvxdr1123/ZeroBot v0.0.0-20201227072627-13a68a4cf442/go.mod h1:CUaG68WJHK714u5XyWzCTFyp/MHQT5vdW3sATSsUZdk=
 github.com/wdvxdr1123/ZeroBot v0.0.0-20210130100206-6e13a7de59ca h1:Z6i+4yc+M8Z473IxKturcDBQCJm+DksCI0lMogceISA=
 github.com/wdvxdr1123/ZeroBot v0.0.0-20210130100206-6e13a7de59ca/go.mod h1:gLbXG9V6XBIKJ/ty9zZnIl3rTPpYGYnPbtFb7yN0/wg=
+github.com/wdvxdr1123/ZeroBot v0.0.0-20210201162802-fe0da61c3a50 h1:WEibLShtAHTFxfcer7m3BGGwTFUz+Go2tiZPNQffaBs=
+github.com/wdvxdr1123/ZeroBot v0.0.0-20210201162802-fe0da61c3a50/go.mod h1:gLbXG9V6XBIKJ/ty9zZnIl3rTPpYGYnPbtFb7yN0/wg=
 github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da h1:NimzV1aGyq29m5ukMK0AMWEhFaL/lrEOaephfuoiARg=
 github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da/go.mod h1:E1AXubJBdNmFERAOucpDIxNzeGfLzg0mYh+UfMWdChA=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=

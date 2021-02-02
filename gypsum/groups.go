@@ -80,6 +80,10 @@ func (g *GroupArchive) ToBytes() ([]byte, error) {
 func (g Group) ExportToArchive(name string, version int64) *GroupArchive {
 	archiveItems := make([]ArchiveItem, len(g.Items))
 	for i, item := range g.Items {
+		if item.ItemType == GroupItem {
+			log.Warnf("group in group are not supported yet, exporting would ignore group %d", item.ItemID)
+			continue
+		}
 		it, ok := findItem(item.ItemType, item.ItemID)
 		if !ok {
 			log.Errorf("cannot find item: type:%s, id: %d", item.ItemType, item.ItemID)
@@ -99,7 +103,7 @@ func (g Group) ExportToArchive(name string, version int64) *GroupArchive {
 		DisplayName:   g.DisplayName,
 		PluginName:    name,
 		PluginVersion: version,
-		GypsumVersion: os.Getenv("GYPSUM_VERSION"),
+		GypsumVersion: gypsumVersion,
 		ArchiveItems:  archiveItems,
 	}
 }
@@ -148,6 +152,7 @@ func loadGroups() {
 			log.Errorf("载入数据错误：%s", err)
 		}
 	}()
+	rootGroupInitialized := false
 	for iter.Next() {
 		key := ToUint(iter.Key()[14:])
 		value := iter.Value()
@@ -157,6 +162,20 @@ func loadGroups() {
 			continue
 		}
 		groups[key] = g
+		if key == 0 {
+			rootGroupInitialized = true
+		}
+	}
+	// ensure root group
+	if !rootGroupInitialized {
+		rootGroup := Group{
+			DisplayName:   "root group",
+			PluginName:    "",
+			PluginVersion: 0,
+			Items:         []Item{},
+			ParentGroup:   0,
+		}
+		groups[0] = &rootGroup
 	}
 }
 
@@ -259,9 +278,29 @@ func createGroup(c *gin.Context) {
 			return
 		}
 	}
+	parentGroup, ok := groups[parentID]
+	if !ok {
+		c.JSON(404, gin.H{
+			"code":    1000,
+			"message": "group not found",
+		})
+		return
+	}
 	group.ParentGroup = parentID
 
 	cursor++
+	parentGroup.Items = append(parentGroup.Items, Item{
+		ItemType: GroupItem,
+		ItemID:   cursor,
+	})
+	if err := parentGroup.SaveToDB(parentID); err != nil {
+		log.Error(err)
+		c.JSON(500, gin.H{
+			"code":    3000,
+			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
+		})
+		return
+	}
 	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3031,
@@ -392,6 +431,9 @@ func exportGroup(c *gin.Context) {
 			"message": "no such group",
 		})
 		return
+	}
+	if groupID == 0 {
+		log.Warn("root group are being export, this is not expected")
 	}
 	pluginVersion, err := strconv.ParseInt(pluginVersionStr, 10, 64)
 	if err != nil {
@@ -627,11 +669,18 @@ func deleteGroup(c *gin.Context) {
 		})
 		return
 	}
+	if groupID == 0 {
+		c.JSON(403, gin.H{
+			"code":    2000,
+			"message": "root group must not be deleted",
+		})
+		return
+	}
 	group, ok := groups[groupID]
 	if !ok {
 		c.JSON(404, gin.H{
 			"code":    1000,
-			"message": "no such resource",
+			"message": "no such group",
 		})
 		return
 	}

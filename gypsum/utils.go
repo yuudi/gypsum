@@ -4,9 +4,15 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"math/rand"
 	"regexp"
 	"strconv"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 func U64ToBytes(i uint64) []byte {
 	b := make([]byte, 8)
@@ -47,11 +53,8 @@ func ToFloat(unk interface{}) (float64, error) {
 	}
 }
 
-var nonAsciiPattern *regexp.Regexp
+var nonAsciiPattern = regexp.MustCompile("[^\\w\\-]")
 
 func ReplaceFilename(s, r string) string {
-	if nonAsciiPattern == nil {
-		nonAsciiPattern = regexp.MustCompile("[^\\w\\-]")
-	}
 	return nonAsciiPattern.ReplaceAllLiteralString(s, r)
 }

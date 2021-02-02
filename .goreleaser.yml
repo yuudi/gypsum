@@ -19,6 +19,8 @@ builds:
         goarch: arm
       - goarm: windows
         goarch: arm64
+    ldflags:
+      - "-s -w -X gypsum.version={{.Version}} -X gypsum.commit={{.ShortCommit}}"
 archives:
   - replacements:
       darwin: macOS
@@ -29,6 +31,7 @@ archives:
     format_overrides:
       - goos: windows
         format: zip
-    files: []
+    files:
+      - NOFILE*
 checksum:
   disable: true

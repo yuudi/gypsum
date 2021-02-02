@@ -4,7 +4,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	zero "github.com/wdvxdr1123/ZeroBot"
 	lua "github.com/yuin/gopher-lua"
-	luajson "layeh.com/gopher-json"
+	luaJson "layeh.com/gopher-json"
 )
 
 func Writer(w interface{ WriteString(string) (int, error) }) func(*lua.LState) int {
@@ -23,12 +23,12 @@ func Writer(w interface{ WriteString(string) (int, error) }) func(*lua.LState) i
 
 func botApi(L *lua.LState) int {
 	action := L.ToString(1)
-	lparams := L.ToTable(2)
+	luaParams := L.ToTable(2)
 	params := make(map[string]interface{})
-	if lparams == nil {
+	if luaParams == nil {
 		params = nil
 	} else {
-		lparams.ForEach(func(k lua.LValue, v lua.LValue) {
+		luaParams.ForEach(func(k lua.LValue, v lua.LValue) {
 			key := k.String()
 			switch v.Type() {
 			case lua.LTString:
@@ -43,7 +43,7 @@ func botApi(L *lua.LState) int {
 		})
 	}
 	result := zero.CallAction(action, params)
-	lresult, _ := luajson.Decode(L, []byte(result.Raw))
-	L.Push(lresult)
+	luaResult, _ := luaJson.Decode(L, []byte(result.Raw))
+	L.Push(luaResult)
 	return 1
 }

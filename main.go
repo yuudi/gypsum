@@ -13,13 +13,7 @@ import (
 	"github.com/yuudi/gypsum/gypsum"
 )
 
-var (
-	version = "0.0.0-dev"
-	commit  = "none"
-)
-
 func main() {
-	fmt.Printf("gypsum %s, commit %s\n\n", version, commit)
 	var conf Config
 	if _, err := toml.DecodeFile("gypsum_config.toml", &conf); err != nil {
 		if os.IsNotExist(err) {
@@ -51,7 +45,7 @@ func main() {
 	//mw := io.MultiWriter(os.Stdout, logFile)
 	//log.SetOutput()
 	gypsum.Config = conf.Gypsum
-	zero.Run(zero.Option{
+	zero.Run(zero.Config{
 		Host:          conf.Host,
 		Port:          strconv.Itoa(conf.Port),
 		AccessToken:   conf.AccessToken,

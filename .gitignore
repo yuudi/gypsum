@@ -14,9 +14,14 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+# MacOS
+.DS_Store
+
 # Editors
 .vscode
-.idea
+.idea/*
+# track codeStyles config files
+!.idea/codeStyles
 
 # Binaries
 dist

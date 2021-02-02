@@ -6,7 +6,7 @@ import (
 	"github.com/flosch/pongo2"
 	log "github.com/sirupsen/logrus"
 	"github.com/yuin/gopher-lua"
-	luajson "layeh.com/gopher-json"
+	luaJson "layeh.com/gopher-json"
 )
 
 type tagLuaNode struct {
@@ -25,14 +25,14 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 		L = lua.NewState()
 		// the close function are called by executor caller
 
-		luajson.Preload(L)
+		luaJson.Preload(L)
 		var luaEvent lua.LValue
 		event, ok := ctx.Public["json_event"]
 		if !ok {
 			luaEvent = lua.LNil
 		} else {
 			var err error
-			luaEvent, err = luajson.Decode(L, []byte(*event.(*string)))
+			luaEvent, err = luaJson.Decode(L, []byte(*event.(*string)))
 			if err != nil {
 				log.Errorf("lua execution error: cannot resume lua event from pongo2 context")
 				return nil

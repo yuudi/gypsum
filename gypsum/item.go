@@ -92,11 +92,11 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte) (uint64, error) 
 		return cursor, nil
 	case GroupItem:
 		err := errors.New("group in group are not supported yet")
-		log.Warning(err)
+		log.Warn(err)
 		return 0, err
 	default:
 		err := errors.New("unexpected type of user_record")
-		log.Warningf("unknown type: %s", itemType)
+		log.Warnf("unknown type: %s", itemType)
 		return 0, err
 	}
 }

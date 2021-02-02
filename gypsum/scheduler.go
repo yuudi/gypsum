@@ -205,7 +205,6 @@ func createJob(c *gin.Context) {
 	}
 	parentStr := c.Param("gid")
 	var parentID uint64
-	var parentGroup *Group
 	if len(parentStr) == 0 {
 		parentID = 0
 	} else {
@@ -218,15 +217,14 @@ func createJob(c *gin.Context) {
 			})
 			return
 		}
-		var ok bool
-		parentGroup, ok = groups[parentID]
-		if !ok {
-			c.JSON(404, gin.H{
-				"code":    1000,
-				"message": "group not found",
-			})
-			return
-		}
+	}
+	parentGroup, ok := groups[parentID]
+	if !ok {
+		c.JSON(404, gin.H{
+			"code":    1000,
+			"message": "group not found",
+		})
+		return
 	}
 	job.ParentGroup = parentID
 	// check spec syntax
@@ -247,19 +245,17 @@ func createJob(c *gin.Context) {
 	}
 	// save
 	cursor++
-	if parentGroup != nil {
-		parentGroup.Items = append(parentGroup.Items, Item{
-			ItemType: SchedulerItem,
-			ItemID:   cursor,
+	parentGroup.Items = append(parentGroup.Items, Item{
+		ItemType: SchedulerItem,
+		ItemID:   cursor,
+	})
+	if err := parentGroup.SaveToDB(parentID); err != nil {
+		log.Error(err)
+		c.JSON(500, gin.H{
+			"code":    3000,
+			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
 		})
-		if err := parentGroup.SaveToDB(parentID); err != nil {
-			log.Error(err)
-			c.JSON(500, gin.H{
-				"code":    3000,
-				"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-			})
-			return
-		}
+		return
 	}
 	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 		log.Error(err)

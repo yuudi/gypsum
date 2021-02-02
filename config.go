@@ -42,7 +42,7 @@ Password = "set-your-password-here"
 
 [ZeroBot]
 # BOT 昵称，叫昵称等同于 @BOT
-NickName = [""]
+NickName = ["机器人"]
 
 # 命令前缀，建议留空
 CommandPrefix = ""
