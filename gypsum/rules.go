@@ -276,6 +276,10 @@ func (r *Rule) GetParentID() uint64 {
 	return r.ParentGroup
 }
 
+func (r *Rule) GetDisplayName() string {
+	return r.DisplayName
+}
+
 func (r *Rule) NewParent(selfID, parentID uint64) error {
 	v, err := r.ToBytes()
 	if err != nil {
@@ -371,8 +375,9 @@ func createRule(c *gin.Context) {
 	// save
 	cursor++
 	parentGroup.Items = append(parentGroup.Items, Item{
-		ItemType: RuleItem,
-		ItemID:   cursor,
+		ItemType:    RuleItem,
+		DisplayName: rule.DisplayName,
+		ItemID:      cursor,
 	})
 	if err := parentGroup.SaveToDB(parentID); err != nil {
 		log.Error(err)
@@ -438,6 +443,11 @@ func deleteRule(c *gin.Context) {
 		})
 		return
 	}
+	// remove self from parent
+	if err := DeleteFromParent(oldRule.ParentGroup, ruleID); err != nil {
+		log.Errorf("error when delete group %d from parent group %d: %s", ruleID, oldRule.ParentGroup, err)
+	}
+	// remove self from database
 	delete(rules, ruleID)
 	if err := db.Delete(append([]byte("gypsum-rules-"), U64ToBytes(ruleID)...), nil); err != nil {
 		c.JSON(500, gin.H{
@@ -482,6 +492,7 @@ func modifyRule(c *gin.Context) {
 		})
 		return
 	}
+	// check new rule syntax
 	if newRule.MatcherType == Regex {
 		if len(newRule.Patterns) != 1 {
 			c.JSON(422, gin.H{
@@ -505,23 +516,9 @@ func modifyRule(c *gin.Context) {
 		})
 		return
 	}
-	v, err := newRule.ToBytes()
-	if err != nil {
-		c.JSON(400, gin.H{
-			"code":    2000,
-			"message": fmt.Sprintf("converting error: %s", err),
-		})
-		return
-	}
-	oldMatcher, ok := zeroMatcher[ruleID]
-	if err := newRule.Register(ruleID); err != nil {
-		c.JSON(400, gin.H{
-			"code":    2001,
-			"message": fmt.Sprintf("rule error: %s", err),
-		})
-		return
-	}
+	newRule.ParentGroup = oldRule.ParentGroup
 	if oldRule.Active {
+		oldMatcher, ok := zeroMatcher[ruleID]
 		if !ok {
 			c.JSON(500, gin.H{
 				"code":    7012,
@@ -531,7 +528,14 @@ func modifyRule(c *gin.Context) {
 		}
 		oldMatcher.Delete()
 	}
-	if err := db.Put(append([]byte("gypsum-rules-"), U64ToBytes(ruleID)...), v, nil); err != nil {
+	if err := newRule.Register(ruleID); err != nil {
+		c.JSON(400, gin.H{
+			"code":    2001,
+			"message": fmt.Sprintf("rule error: %s", err),
+		})
+		return
+	}
+	if err := newRule.SaveToDB(ruleID); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3002,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -539,6 +543,11 @@ func modifyRule(c *gin.Context) {
 		return
 	}
 	rules[ruleID] = &newRule
+	if newRule.DisplayName != oldRule.DisplayName {
+		if err = ChangeNameForParent(newRule.ParentGroup, ruleID, newRule.DisplayName); err != nil {
+			log.Errorf("error when change rule %d from parent group %d: %s", ruleID, newRule.ParentGroup, err)
+		}
+	}
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "ok",

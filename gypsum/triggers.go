@@ -168,6 +168,10 @@ func (t *Trigger) GetParentID() uint64 {
 	return t.ParentGroup
 }
 
+func (t *Trigger) GetDisplayName() string {
+	return t.DisplayName
+}
+
 func (t *Trigger) SaveToDB(idx uint64) error {
 	v, err := t.ToBytes()
 	if err != nil {
@@ -256,8 +260,9 @@ func createTrigger(c *gin.Context) {
 	//save
 	cursor++
 	parentGroup.Items = append(parentGroup.Items, Item{
-		ItemType: TriggerItem,
-		ItemID:   cursor,
+		ItemType:    TriggerItem,
+		DisplayName: trigger.DisplayName,
+		ItemID:      cursor,
 	})
 	if err := parentGroup.SaveToDB(parentID); err != nil {
 		log.Error(err)
@@ -324,6 +329,12 @@ func deleteTrigger(c *gin.Context) {
 		return
 	}
 
+	// remove self from parent
+	if err := DeleteFromParent(oldTrigger.ParentGroup, triggerID); err != nil {
+		log.Errorf("error when delete group %d from parent group %d: %s", triggerID, oldTrigger.ParentGroup, err)
+	}
+
+	// remove self from database
 	delete(triggers, triggerID)
 	if err := db.Delete(append([]byte("gypsum-triggers-"), U64ToBytes(triggerID)...), nil); err != nil {
 		c.JSON(500, gin.H{
@@ -368,6 +379,7 @@ func modifyTrigger(c *gin.Context) {
 		})
 		return
 	}
+	// check syntax
 	if err := checkTemplate(newTrigger.Response); err != nil {
 		c.JSON(422, gin.H{
 			"code":    2041,
@@ -375,22 +387,8 @@ func modifyTrigger(c *gin.Context) {
 		})
 		return
 	}
-	v, err := newTrigger.ToBytes()
-	if err != nil {
-		c.JSON(400, gin.H{
-			"code":    2000,
-			"message": fmt.Sprintf("converting error: %s", err),
-		})
-		return
-	}
 	oldMatcher, ok := zeroTrigger[triggerID]
-	if err := newTrigger.Register(triggerID); err != nil {
-		c.JSON(400, gin.H{
-			"code":    2001,
-			"message": fmt.Sprintf("trigger error: %s", err),
-		})
-		return
-	}
+	newTrigger.ParentGroup = oldTrigger.ParentGroup
 	if oldTrigger.Active {
 		if !ok {
 			c.JSON(500, gin.H{
@@ -401,7 +399,14 @@ func modifyTrigger(c *gin.Context) {
 		}
 		oldMatcher.Delete()
 	}
-	if err := db.Put(append([]byte("gypsum-triggers-"), U64ToBytes(triggerID)...), v, nil); err != nil {
+	if err := newTrigger.Register(triggerID); err != nil {
+		c.JSON(400, gin.H{
+			"code":    2001,
+			"message": fmt.Sprintf("trigger error: %s", err),
+		})
+		return
+	}
+	if err := newTrigger.SaveToDB(triggerID); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3002,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -409,6 +414,11 @@ func modifyTrigger(c *gin.Context) {
 		return
 	}
 	triggers[triggerID] = &newTrigger
+	if newTrigger.DisplayName != oldTrigger.DisplayName {
+		if err = ChangeNameForParent(newTrigger.ParentGroup, triggerID, newTrigger.DisplayName); err != nil {
+			log.Errorf("error when change trigger %d from parent group %d: %s", triggerID, newTrigger.ParentGroup, err)
+		}
+	}
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "ok",

@@ -159,6 +159,10 @@ func (j *Job) GetParentID() uint64 {
 	return j.ParentGroup
 }
 
+func (j *Job) GetDisplayName() string {
+	return j.DisplayName
+}
+
 func (j *Job) NewParent(selfID, parentID uint64) error {
 	v, err := j.ToBytes()
 	if err != nil {
@@ -246,8 +250,9 @@ func createJob(c *gin.Context) {
 	// save
 	cursor++
 	parentGroup.Items = append(parentGroup.Items, Item{
-		ItemType: SchedulerItem,
-		ItemID:   cursor,
+		ItemType:    SchedulerItem,
+		DisplayName: job.DisplayName,
+		ItemID:      cursor,
 	})
 	if err := parentGroup.SaveToDB(parentID); err != nil {
 		log.Error(err)
@@ -315,6 +320,11 @@ func deleteJob(c *gin.Context) {
 		})
 		return
 	}
+	// remove self from parent
+	if err := DeleteFromParent(job.ParentGroup, jobID); err != nil {
+		log.Errorf("error when delete group %d from parent group %d: %s", jobID, job.ParentGroup, err)
+	}
+	// remove self from database
 	delete(jobs, jobID)
 	if err := db.Delete(append([]byte("gypsum-jobs-"), U64ToBytes(jobID)...), nil); err != nil {
 		c.JSON(500, gin.H{
@@ -375,14 +385,7 @@ func modifyJob(c *gin.Context) {
 		})
 		return
 	}
-	v, err := newJob.ToBytes()
-	if err != nil {
-		c.JSON(400, gin.H{
-			"code":    2000,
-			"message": fmt.Sprintf("converting error: %s", err),
-		})
-		return
-	}
+	newJob.ParentGroup = oldJob.ParentGroup
 	if oldJob.Active {
 		scheduler.Remove(entries[jobID])
 	}
@@ -393,7 +396,7 @@ func modifyJob(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put(append([]byte("gypsum-jobs-"), U64ToBytes(jobID)...), v, nil); err != nil {
+	if err := newJob.SaveToDB(jobID); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3002,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -401,6 +404,11 @@ func modifyJob(c *gin.Context) {
 		return
 	}
 	jobs[jobID] = &newJob
+	if newJob.DisplayName != oldJob.DisplayName {
+		if err = ChangeNameForParent(newJob.ParentGroup, jobID, newJob.DisplayName); err != nil {
+			log.Errorf("error when change job %d from parent group %d: %s", jobID, newJob.ParentGroup, err)
+		}
+	}
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "ok",

@@ -1,0 +1,63 @@
+name: ci
+
+on:
+  push: {}
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Build Go Binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, windows]
+        goarch: [amd64]
+      fail-fast: true
+
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v2
+        with:
+          stable: false
+          go-version: 1.16.0-rc1
+
+      - name: Checkout the Repo
+        uses: actions/checkout@v2
+
+      - name: Cache Go Modules
+        uses: actions/cache@v2
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('./go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+
+      - name: Download Frontend Assets
+        run: |
+          curl -sL https://api.github.com/repos/yuudi/gypsum-web/releases/latest \
+            | jq -r ".assets[0].browser_download_url" \
+            | wget -q -O gypsum-web.tar.gz -i -
+          tar zxf gypsum-web.tar.gz
+          mv dist/web gypsum/
+
+      - name: Build Binaries
+        run: |
+          if [ $GOOS = "windows" ]; then BINARY_SUFFIX=".exe"; fi
+          LD_FLAGS="-w -s -X gypsum.gypsumVersion=test -X gypsum.gypsumCommit=$(git log --pretty=format:"%h" -1)"
+          go generate ./...
+          go build -o "dist/gypsum-test${BINARY_SUFFIX}" -ldflags "$LD_FLAGS" .
+        env:
+          CGO_ENABLED: 0
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+
+      - name: Upload artifact
+        if: ${{ github.event_name != 'pull_request' }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.goos }}_${{ matrix.goarch }}
+          path: dist/

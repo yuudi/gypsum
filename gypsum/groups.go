@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/gob"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -19,8 +20,9 @@ import (
 )
 
 type Item struct {
-	ItemType ItemType `json:"item_type"`
-	ItemID   uint64   `json:"item_id"`
+	ItemType    ItemType `json:"item_type"`
+	DisplayName string   `json:"display_name"`
+	ItemID      uint64   `json:"item_id"`
 }
 
 type Group struct {
@@ -32,8 +34,9 @@ type Group struct {
 }
 
 type ArchiveItem struct {
-	ItemType  ItemType
-	ItemBytes []byte
+	ItemType    ItemType
+	DisplayName string
+	ItemBytes   []byte
 }
 
 type GroupArchive struct {
@@ -95,8 +98,9 @@ func (g Group) ExportToArchive(name string, version int64) *GroupArchive {
 			continue
 		}
 		archiveItems[i] = ArchiveItem{
-			ItemType:  item.ItemType,
-			ItemBytes: itBytes,
+			ItemType:    item.ItemType,
+			DisplayName: item.DisplayName,
+			ItemBytes:   itBytes,
 		}
 	}
 	return &GroupArchive{
@@ -136,8 +140,9 @@ func GroupFromArchiveReader(reader io.Reader) (*Group, error) {
 			continue
 		}
 		g.Items[i] = Item{
-			ItemType: item.ItemType,
-			ItemID:   idx,
+			ItemType:    item.ItemType,
+			DisplayName: item.DisplayName,
+			ItemID:      idx,
 		}
 	}
 	return g, nil
@@ -180,9 +185,6 @@ func loadGroups() {
 }
 
 func (g *Group) SaveToDB(gid uint64) error {
-	if gid == 0 {
-		return nil
-	}
 	v, err := g.ToBytes()
 	if err != nil {
 		return err
@@ -212,10 +214,47 @@ func (g *Group) GetParentID() uint64 {
 	return g.ParentGroup
 }
 
+func (g *Group) GetDisplayName() string {
+	return g.DisplayName
+}
+
 func (g *Group) NewParent(selfID, parentID uint64) error {
 	g.ParentGroup = parentID
 	err := g.SaveToDB(selfID)
 	return err
+}
+
+func DeleteFromParent(parentID, selfID uint64) error {
+	parentGroup, ok := groups[parentID]
+	if !ok {
+		return errors.New(fmt.Sprintf("parent not found: %d", parentID))
+	}
+	for index, item := range parentGroup.Items {
+		if item.ItemID == selfID {
+			// remove the index-th element in a slice
+			copy(parentGroup.Items[index:], parentGroup.Items[index+1:])
+			parentGroup.Items = parentGroup.Items[:len(parentGroup.Items)-1]
+
+			err := parentGroup.SaveToDB(parentID)
+			return err
+		}
+	}
+	return errors.New(fmt.Sprintf("item %d not found in parent: %d", selfID, parentID))
+}
+
+func ChangeNameForParent(parentID, selfID uint64, newName string) error {
+	parentGroup, ok := groups[parentID]
+	if !ok {
+		return errors.New(fmt.Sprintf("parent not found: %d", parentID))
+	}
+	for index := range parentGroup.Items {
+		if parentGroup.Items[index].ItemID == selfID {
+			parentGroup.Items[index].DisplayName = newName
+			err := parentGroup.SaveToDB(parentID)
+			return err
+		}
+	}
+	return errors.New(fmt.Sprintf("item %d not found in parent: %d", selfID, parentID))
 }
 
 func getGroups(c *gin.Context) {
@@ -290,8 +329,9 @@ func createGroup(c *gin.Context) {
 
 	cursor++
 	parentGroup.Items = append(parentGroup.Items, Item{
-		ItemType: GroupItem,
-		ItemID:   cursor,
+		ItemType:    GroupItem,
+		DisplayName: group.DisplayName,
+		ItemID:      cursor,
 	})
 	if err := parentGroup.SaveToDB(parentID); err != nil {
 		log.Error(err)
@@ -369,32 +409,11 @@ func addGroupItem(c *gin.Context) {
 		})
 		return
 	}
-	oldGroupID := item.GetParentID()
-	if oldGroupID != 0 {
-		// remove item from old group
-		oldGroup := groups[oldGroupID]
-		for k, v := range oldGroup.Items {
-			if v.ItemID == itemID {
-				// remove the k-th element in a slice
-				copy(oldGroup.Items[k:], oldGroup.Items[k+1:])
-				oldGroup.Items = oldGroup.Items[:len(oldGroup.Items)-1]
-				break
-			}
-			log.Error("item does not exist in its parent group")
-			c.JSON(500, gin.H{
-				"code":    3051,
-				"message": fmt.Sprintf("Server got itself into trouble: item does not exist in its parent group"),
-			})
-			return
-		}
-		if err := oldGroup.SaveToDB(oldGroupID); err != nil {
-			c.JSON(500, gin.H{
-				"code":    3052,
-				"message": fmt.Sprintf("Server got itself into trouble: item does not exist in its parent group"),
-			})
-			return
-		}
+	// remove item from old group
+	if err := DeleteFromParent(item.GetParentID(), itemID); err != nil {
+		log.Warnf("error when delete group %d from parent group %d: %s", groupID, group.ParentGroup, err)
 	}
+	// add item to new group
 	if err = item.NewParent(itemID, groupID); err != nil {
 		log.Error(err)
 		c.JSON(500, gin.H{
@@ -404,8 +423,9 @@ func addGroupItem(c *gin.Context) {
 		return
 	}
 	group.Items = append(group.Items, Item{
-		ItemType: iType,
-		ItemID:   itemID,
+		ItemType:    iType,
+		DisplayName: item.GetDisplayName(),
+		ItemID:      itemID,
 	})
 	if err := group.SaveToDB(groupID); err != nil {
 		c.JSON(500, gin.H{
@@ -426,10 +446,7 @@ func exportGroup(c *gin.Context) {
 	groupIDStr := c.Param("gid")
 	groupID, err := strconv.ParseUint(groupIDStr, 10, 64)
 	if err != nil {
-		c.JSON(404, gin.H{
-			"code":    1000,
-			"message": "no such group",
-		})
+		c.String(404, "404: group not found")
 		return
 	}
 	if groupID == 0 {
@@ -437,18 +454,12 @@ func exportGroup(c *gin.Context) {
 	}
 	pluginVersion, err := strconv.ParseInt(pluginVersionStr, 10, 64)
 	if err != nil {
-		c.JSON(400, gin.H{
-			"code":    1080,
-			"message": "plugin_version must be an integer",
-		})
+		c.String(400, "400 Bad Request\nplugin_version must be an integer")
 		return
 	}
 	group, ok := groups[groupID]
 	if !ok {
-		c.JSON(404, gin.H{
-			"code":    1000,
-			"message": "no such group",
-		})
+		c.String(404, "404: group not found")
 		return
 	}
 	buf := new(bytes.Buffer)
@@ -456,27 +467,18 @@ func exportGroup(c *gin.Context) {
 	f, err := zipWriter.Create("gypsum-plugin.dat")
 	if err != nil {
 		log.Error(err)
-		c.JSON(500, gin.H{
-			"code":    7021,
-			"message": fmt.Sprintf("error when create plugin zipfile: %s", err),
-		})
+		c.String(500, fmt.Sprintf("500 Internal Server Error\nerror when create plugin zipfile: %s", err))
 		return
 	}
 	groupData, err := group.ExportToArchive(pluginName, pluginVersion).ToBytes()
 	if err != nil {
-		c.JSON(500, gin.H{
-			"code":    3041,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
+		c.String(500, fmt.Sprintf("500 Internal Server Error\nServer got itself into trouble: %s", err))
 		return
 	}
 	_, err = f.Write(groupData)
 	if err != nil {
 		log.Error(err)
-		c.JSON(500, gin.H{
-			"code":    3042,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
+		c.String(500, fmt.Sprintf("500 Internal Server Error\nServer got itself into trouble: %s", err))
 		return
 	}
 	for _, item := range group.Items {
@@ -486,28 +488,19 @@ func exportGroup(c *gin.Context) {
 			fileData, err := os.ReadFile(path.Join(resDir, res.Sha256Sum+res.Ext))
 			if err != nil {
 				log.Error(err)
-				c.JSON(500, gin.H{
-					"code":    3043,
-					"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-				})
+				c.String(500, fmt.Sprintf("500 Internal Server Error\nServer got itself into trouble: %s", err))
 				return
 			}
 			f, err := zipWriter.Create(res.Sha256Sum + res.Ext)
 			if err != nil {
 				log.Error(err)
-				c.JSON(500, gin.H{
-					"code":    3044,
-					"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-				})
+				c.String(500, fmt.Sprintf("500 Internal Server Error\nServer got itself into trouble: %s", err))
 				return
 			}
 			_, err = f.Write(fileData)
 			if err != nil {
 				log.Error(err)
-				c.JSON(500, gin.H{
-					"code":    3045,
-					"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-				})
+				c.String(500, fmt.Sprintf("500 Internal Server Error\nServer got itself into trouble: %s", err))
 				return
 			}
 		}
@@ -515,10 +508,7 @@ func exportGroup(c *gin.Context) {
 	err = zipWriter.Close()
 	if err != nil {
 		log.Error(err)
-		c.JSON(500, gin.H{
-			"code":    3046,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
+		c.String(500, fmt.Sprintf("500 Internal Server Error\nServer got itself into trouble: %s", err))
 		return
 	}
 	c.Header("Content-Description", "File Transfer")
@@ -528,10 +518,7 @@ func exportGroup(c *gin.Context) {
 	_, err = c.Writer.Write(buf.Bytes())
 	if err != nil {
 		log.Error(err)
-		c.JSON(500, gin.H{
-			"code":    3047,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
+		c.String(500, fmt.Sprintf("500 Internal Server Error\nServer got itself into trouble: %s", err))
 		return
 	}
 }
@@ -705,6 +692,11 @@ func deleteGroup(c *gin.Context) {
 	} else {
 		newGroup = nil
 	}
+	// remove self from parent
+	if err := DeleteFromParent(group.ParentGroup, groupID); err != nil {
+		log.Errorf("error when delete group %d from parent group %d: %s", groupID, group.ParentGroup, err)
+	}
+	// move items to new group
 	for _, item := range group.Items {
 		it, ok := findItem(item.ItemType, item.ItemID)
 		if !ok {
@@ -720,7 +712,15 @@ func deleteGroup(c *gin.Context) {
 	if newGroup != nil {
 		newGroup.Items = append(newGroup.Items, group.Items...)
 	}
+	// remove self from database
 	delete(groups, groupID)
+	if err := db.Delete(append([]byte("gypsum-groups-"), U64ToBytes(groupID)...), nil); err != nil {
+		c.JSON(500, gin.H{
+			"code":    3001,
+			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
+		})
+		return
+	}
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "deleted",
@@ -733,12 +733,12 @@ type groupNamePatch struct {
 }
 
 func renameGroup(c *gin.Context) {
-	groupIDStr := c.Param("rid")
+	groupIDStr := c.Param("gid")
 	groupID, err := strconv.ParseUint(groupIDStr, 10, 64)
 	if err != nil {
 		c.JSON(404, gin.H{
 			"code":    1000,
-			"message": "no such resource",
+			"message": "no such group",
 		})
 		return
 	}
@@ -759,6 +759,9 @@ func renameGroup(c *gin.Context) {
 		return
 	}
 	group.DisplayName = np.DisplayName
+	if err := ChangeNameForParent(group.ParentGroup, groupID, np.DisplayName); err != nil {
+		log.Errorf("error when change group %d from parent group %d: %s", groupID, group.ParentGroup, err)
+	}
 	err = group.SaveToDB(groupID)
 	if err != nil {
 		c.JSON(500, gin.H{

@@ -9,14 +9,18 @@ import (
 	_ "github.com/yuudi/gypsum/helper/jsoniter_plugin_integer_interface"
 )
 
-var Config = struct {
-	Listen   string
-	Username string
-	Password string
-}{
-	"0.0.0.0:9900",
-	"admin",
-	"admin",
+type ConfigType struct {
+	Listen         string
+	Username       string
+	Password       string
+	ExternalAssets string
+}
+
+var Config = ConfigType{
+	Listen:         "0.0.0.0:9900",
+	Username:       "admin",
+	Password:       "admin",
+	ExternalAssets: "",
 }
 
 var (

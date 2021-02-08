@@ -23,5 +23,8 @@
 # track codeStyles config files
 !.idea/codeStyles
 
+# Frontend build
+/gypsum/web
+
 # Binaries
 dist

@@ -106,6 +106,10 @@ func (r *Resource) GetParentID() uint64 {
 	return r.ParentGroup
 }
 
+func (r *Resource) GetDisplayName() string {
+	return r.FileName + r.Ext
+}
+
 func (r *Resource) NewParent(selfID, parentID uint64) error {
 	v, err := r.ToBytes()
 	if err != nil {
@@ -169,25 +173,20 @@ func downloadResource(c *gin.Context) {
 	resourceIDStr := c.Param("rid")
 	resourceID, err := strconv.ParseUint(resourceIDStr, 10, 64)
 	if err != nil {
-		c.JSON(404, gin.H{
-			"code":    1000,
-			"message": "no such resource",
-		})
+		c.String(404, "404: resource not found")
 		return
 	}
 	r, ok := resources[resourceID]
 	if !ok {
-		c.JSON(404, gin.H{
-			"code":    1000,
-			"message": "no such resource",
-		})
+		c.String(404, "404: resource not found")
 		return
 	}
-	// c.Header("Content-Description", "File Transfer")
-	// c.Header("Content-Transfer-Encoding", "binary")
-	// c.Header("Content-Disposition", "attachment; filename="+r.FileName+r.Ext)
-	// c.Header("Content-Type", "application/octet-stream")
-	// c.File(path.Join(resDir, r.Sha256Sum+r.Ext))
+	if c.Request.Header.Get("If-None-Match") == r.Sha256Sum {
+		// cache hit
+		c.Status(304)
+		return
+	}
+	c.Header("ETag", r.Sha256Sum)
 	c.FileAttachment(path.Join(resDir, r.Sha256Sum+r.Ext), r.FileName+r.Ext)
 }
 
@@ -267,8 +266,9 @@ func uploadResource(c *gin.Context) {
 	// save info data
 	cursor++
 	parentGroup.Items = append(parentGroup.Items, Item{
-		ItemType: ResourceItem,
-		ItemID:   cursor,
+		ItemType:    ResourceItem,
+		DisplayName: fileName + ext,
+		ItemID:      cursor,
 	})
 	if err := parentGroup.SaveToDB(parentID); err != nil {
 		log.Error(err)
@@ -331,7 +331,7 @@ func deleteResource(c *gin.Context) {
 		})
 		return
 	}
-	_, ok := resources[resourceID]
+	oldResource, ok := resources[resourceID]
 	if !ok {
 		c.JSON(404, gin.H{
 			"code":    1000,
@@ -339,6 +339,11 @@ func deleteResource(c *gin.Context) {
 		})
 		return
 	}
+	// remove self from parent
+	if err := DeleteFromParent(oldResource.ParentGroup, resourceID); err != nil {
+		log.Errorf("error when delete group %d from parent group %d: %s", resourceID, oldResource.ParentGroup, err)
+	}
+	// remove self from database
 	delete(resources, resourceID)
 	if err := db.Delete(append([]byte("gypsum-resources-"), U64ToBytes(resourceID)...), nil); err != nil {
 		c.JSON(500, gin.H{
@@ -385,6 +390,9 @@ func renameResource(c *gin.Context) {
 		return
 	}
 	r.FileName = np.FileName
+	if err = ChangeNameForParent(r.ParentGroup, resourceID, np.FileName+r.Ext); err != nil {
+		log.Errorf("error when change resource %d from parent group %d: %s", resourceID, r.ParentGroup, err)
+	}
 	if err = r.SaveToDB(resourceID); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,

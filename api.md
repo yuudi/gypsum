@@ -14,19 +14,20 @@ base path: `/api/v1`
 
 对象结构：组
 
-| 字段           | 类型              | 含义                       |
-| -------------- | ----------------- | -------------------------- |
-| display_name   | string            | 显示名称                   |
-| plugin_name    | string            | （仅导入的组）插件名       |
-| plugin_version | integer           | （仅导入的组）插件数字版本 |
-| items          | array\<object\*\> | 项目                       |
+| 字段           | 类型              | 含义                                        |
+| -------------- | ----------------- | ------------------------------------------- |
+| display_name   | string            | 显示名称                                    |
+| plugin_name    | string            | （仅导入的组）插件名                        |
+| plugin_version | integer           | （仅导入的组）插件数字版本（大于 0 的整数） |
+| items          | array\<object\*\> | 项目                                        |
 
 对象结构：项目
 
-| 字段      | 类型    | 含义                                                                                                           |
-| --------- | ------- | -------------------------------------------------------------------------------------------------------------- |
-| item_type | string  | 项目类型<br>`rule` 消息规则<br>`trigger` 触发事件<br>`scheduler` 定时任务<br>`resource` 静态资源<br>`group` 组 |
-| item_id   | integer | 项目编号                                                                                                       |
+| 字段         | 类型    | 含义                                                                                                           |
+| ------------ | ------- | -------------------------------------------------------------------------------------------------------------- |
+| item_type    | string  | 项目类型<br>`rule` 消息规则<br>`trigger` 触发事件<br>`scheduler` 定时任务<br>`resource` 静态资源<br>`group` 组 |
+| display_name | string  | 显示名称                                                                                                       |
+| item_id      | integer | 项目编号                                                                                                       |
 
 ### 列出所有组
 
@@ -305,13 +306,15 @@ GET `/resources/{resource_id}`
 
 GET `/resources/{sha256_sum}`
 
-返回 `status 302`
+返回 `status 302` 至 `resource_id` 格式的的 URI
 
 ### 下载资源
 
 GET `/resources/{resource_id}/content`
 
 返回资源的二进制文件，文件名包含在标头 `Content-Disposition` 字段中
+
+资源可用 `ETag` 与 `If-None-Match` 标记缓存，缓存匹配时返回 `status 304`（可由浏览器自动处理）
 
 ### 上传资源
 
@@ -342,3 +345,5 @@ PATCH `/resources/{resource_id}`
 请求体为 `json`，只有 `file_name` 字段，例如：`{"file_name":"a better name"}`
 
 ## 模板测试
+
+## bot

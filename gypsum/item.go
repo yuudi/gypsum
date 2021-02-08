@@ -20,6 +20,7 @@ const (
 type UserRecord interface {
 	ToBytes() ([]byte, error)
 	GetParentID() uint64
+	GetDisplayName() string
 	NewParent(selfID, parentID uint64) error
 	SaveToDB(selfID uint64) error
 }
