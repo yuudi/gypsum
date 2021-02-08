@@ -20,7 +20,11 @@ builds:
       - goarm: windows
         goarch: arm64
     ldflags:
-      - "-s -w -X gypsum.gypsumVersion={{.Version}} -X gypsum.gypsumCommit={{.ShortCommit}}"
+      - >-
+        -s
+        -w
+        -X github.com/yuudi/gypsum/gypsum.gypsumVersion={{.Version}}
+        -X github.com/yuudi/gypsum/gypsum.gypsumCommit={{.ShortCommit}}
 archives:
   - replacements:
       darwin: macOS
@@ -35,6 +39,3 @@ archives:
       - NOFILE*
 checksum:
   disable: true
-before:
-  hooks:
-    - go generate ./...

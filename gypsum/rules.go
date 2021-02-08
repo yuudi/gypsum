@@ -373,7 +373,8 @@ func createRule(c *gin.Context) {
 		return
 	}
 	// save
-	cursor++
+	itemCursor++
+	cursor := itemCursor
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    RuleItem,
 		DisplayName: rule.DisplayName,

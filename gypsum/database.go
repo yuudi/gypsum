@@ -5,7 +5,7 @@ import (
 )
 
 var db *leveldb.DB
-var cursor uint64
+var itemCursor uint64
 
 func initDb() (err error) {
 	db, err = leveldb.OpenFile("gypsum_data/data", nil)
@@ -15,12 +15,12 @@ func initDb() (err error) {
 	data, e := db.Get([]byte("gypsum-$meta-cursor"), nil)
 	if e != nil {
 		if e == leveldb.ErrNotFound {
-			cursor = 0
+			itemCursor = 0
 		} else {
 			return e
 		}
 	} else {
-		cursor = ToUint(data)
+		itemCursor = ToUint(data)
 	}
 	return
 }

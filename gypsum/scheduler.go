@@ -19,8 +19,8 @@ import (
 type Job struct {
 	DisplayName string  `json:"display_name"`
 	Active      bool    `json:"active"`
-	GroupID     []int64 `json:"group_id"`
-	UserID      []int64 `json:"user_id"`
+	GroupsID    []int64 `json:"groups_id"`
+	UsersID     []int64 `json:"users_id"`
 	Once        bool    `json:"once"`
 	CronSpec    string  `json:"cron_spec"`
 	Action      string  `json:"action"`
@@ -48,8 +48,8 @@ func JobFromBytes(b []byte) (*Job, error) {
 	j := &Job{
 		DisplayName: "",
 		Active:      true,
-		GroupID:     []int64{},
-		UserID:      []int64{},
+		GroupsID:    []int64{},
+		UsersID:     []int64{},
 		Once:        false,
 		CronSpec:    "0 0 * * *",
 		Action:      "",
@@ -84,10 +84,10 @@ func (j *Job) Executor() (func(), *uint64, error) {
 		}
 		msg = strings.TrimSpace(msg)
 		if msg != "" {
-			for _, friend := range j.UserID {
+			for _, friend := range j.UsersID {
 				zero.SendPrivateMessage(friend, msg)
 			}
-			for _, group := range j.GroupID {
+			for _, group := range j.GroupsID {
 				zero.SendGroupMessage(group, msg)
 			}
 			log.Infof("scheduled job executed: %s", msg)
@@ -248,7 +248,8 @@ func createJob(c *gin.Context) {
 		return
 	}
 	// save
-	cursor++
+	itemCursor++
+	cursor := itemCursor
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    SchedulerItem,
 		DisplayName: job.DisplayName,

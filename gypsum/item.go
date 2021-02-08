@@ -40,7 +40,8 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte) (uint64, error) 
 		if err != nil {
 			return 0, err
 		}
-		cursor++
+		itemCursor++
+		cursor := itemCursor
 		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 			return 0, err
 		}
@@ -54,7 +55,8 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte) (uint64, error) 
 		if err != nil {
 			return 0, err
 		}
-		cursor++
+		itemCursor++
+		cursor := itemCursor
 		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 			return 0, err
 		}
@@ -68,7 +70,8 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte) (uint64, error) 
 		if err != nil {
 			return 0, err
 		}
-		cursor++
+		itemCursor++
+		cursor := itemCursor
 		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 			return 0, err
 		}
@@ -82,7 +85,8 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte) (uint64, error) 
 		if err != nil {
 			return 0, err
 		}
-		cursor++
+		itemCursor++
+		cursor := itemCursor
 		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 			return 0, err
 		}

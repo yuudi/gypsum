@@ -19,15 +19,15 @@ import (
 type TriggerCategory int
 
 type Trigger struct {
-	DisplayName string  `json:"display_name"`
-	Active      bool    `json:"active"`
-	GroupsID    []int64 `json:"groups_id"`
-	UsersID     []int64 `json:"users_id"`
-	TriggerType string  `json:"trigger_type"`
-	Response    string  `json:"response"`
-	Priority    int     `json:"priority"`
-	Block       bool    `json:"block"`
-	ParentGroup uint64  `json:"-"`
+	DisplayName string   `json:"display_name"`
+	Active      bool     `json:"active"`
+	GroupsID    []int64  `json:"groups_id"`
+	UsersID     []int64  `json:"users_id"`
+	TriggerType []string `json:"trigger_type"`
+	Response    string   `json:"response"`
+	Priority    int      `json:"priority"`
+	Block       bool     `json:"block"`
+	ParentGroup uint64   `json:"-"`
 }
 
 var (
@@ -50,7 +50,7 @@ func TriggerFromByte(b []byte) (*Trigger, error) {
 		Active:      true,
 		GroupsID:    []int64{},
 		UsersID:     []int64{},
-		TriggerType: "",
+		TriggerType: []string{},
 		Response:    "",
 		Priority:    50,
 		Block:       true,
@@ -63,15 +63,26 @@ func TriggerFromByte(b []byte) (*Trigger, error) {
 	return t, err
 }
 
-func noticeRule(noticeTypeStr string) zero.Rule {
-	noticeType := strings.SplitN(noticeTypeStr, "/", 2)
-	if len(noticeType) == 1 {
-		return func(event *zero.Event, _ zero.State) bool {
-			return event.DetailType == noticeType[0]
+func noticeRule(noticeTypeCas []string) zero.Rule {
+	if len(noticeTypeCas) == 0 {
+		log.Error("notice_type must have at least one element")
+		return func(_ *zero.Event, _ zero.State) bool {
+			return false
 		}
 	}
-	return func(event *zero.Event, _ zero.State) bool {
-		return event.DetailType == noticeType[0] && event.SubType == noticeType[1]
+	if len(noticeTypeCas) == 1 {
+		return func(event *zero.Event, _ zero.State) bool {
+			return event.DetailType == noticeTypeCas[0]
+		}
+	}
+	if len(noticeTypeCas) == 2 {
+		return func(event *zero.Event, _ zero.State) bool {
+			return event.DetailType == noticeTypeCas[0] && event.SubType == noticeTypeCas[1]
+		}
+	}
+	log.Error("notice_type have too many element")
+	return func(_ *zero.Event, _ zero.State) bool {
+		return false
 	}
 }
 
@@ -250,6 +261,13 @@ func createTrigger(c *gin.Context) {
 
 	trigger.ParentGroup = parentID
 	// syntax check
+	if len(trigger.TriggerType) < 1 || len(trigger.TriggerType) > 2 {
+		c.JSON(422, gin.H{
+			"code":    2042,
+			"message": "trigger_type must have 1 or 2 elements",
+		})
+		return
+	}
 	if err := checkTemplate(trigger.Response); err != nil {
 		c.JSON(422, gin.H{
 			"code":    2041,
@@ -258,7 +276,8 @@ func createTrigger(c *gin.Context) {
 		return
 	}
 	//save
-	cursor++
+	itemCursor++
+	cursor := itemCursor
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    TriggerItem,
 		DisplayName: trigger.DisplayName,
@@ -380,6 +399,13 @@ func modifyTrigger(c *gin.Context) {
 		return
 	}
 	// check syntax
+	if len(newTrigger.TriggerType) < 1 || len(newTrigger.TriggerType) > 2 {
+		c.JSON(422, gin.H{
+			"code":    2042,
+			"message": "trigger_type must have 1 or 2 elements",
+		})
+		return
+	}
 	if err := checkTemplate(newTrigger.Response); err != nil {
 		c.JSON(422, gin.H{
 			"code":    2041,

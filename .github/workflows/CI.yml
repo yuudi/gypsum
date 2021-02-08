@@ -17,17 +17,60 @@ jobs:
       matrix:
         goos: [linux, windows]
         goarch: [amd64]
+      max-parallel: 1  # avoid cache conflict
       fail-fast: true
 
     steps:
+      - name: Checkout the Repo
+        uses: actions/checkout@v2
+        with:
+          submodules: true
+
+      - name: Get frontend ref hash
+        id: frontend-ref
+        run: echo "::set-output name=commit::$(git submodule status | cut -f 2 -d ' ')"
+
+      - name: Cache frontend builds
+        id: cache-frontend-builds
+        uses: actions/cache@v2
+        with:
+          path: gypsum/web
+          key: gypsum-web-builds-${{ steps.frontend-ref.outputs.commit }}
+
+      - name: Setup Nodejs
+        if: steps.cache-frontend-builds.outputs.cache-hit != 'true'
+        uses: actions/setup-node@v2
+        with:
+          node-version: "14"
+
+      - name: Get yarn cache directory path
+        if: steps.cache-frontend-builds.outputs.cache-hit != 'true'
+        id: yarn-cache-dir-path
+        run: echo "::set-output name=dir::$(yarn cache dir)"
+
+      - name: Cache yarn
+        uses: actions/cache@v2
+        if: steps.cache-frontend-builds.outputs.cache-hit != 'true'
+        id: yarn-cache
+        with:
+          path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Build frontend
+        if: steps.cache-frontend-builds.outputs.cache-hit != 'true'
+        run: |
+          cd frontend
+          yarn install
+          yarn build --dest ../gypsum/web
+          gzip -rk9 ../gypsum/web
+
       - name: Install Go
         uses: actions/setup-go@v2
         with:
           stable: false
           go-version: 1.16.0-rc1
-
-      - name: Checkout the Repo
-        uses: actions/checkout@v2
 
       - name: Cache Go Modules
         uses: actions/cache@v2
@@ -36,19 +79,10 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('./go.sum') }}
           restore-keys: ${{ runner.os }}-go-
 
-      - name: Download Frontend Assets
-        run: |
-          curl -sL https://api.github.com/repos/yuudi/gypsum-web/releases/latest \
-            | jq -r ".assets[0].browser_download_url" \
-            | wget -q -O gypsum-web.tar.gz -i -
-          tar zxf gypsum-web.tar.gz
-          mv dist/web gypsum/
-
       - name: Build Binaries
         run: |
           if [ $GOOS = "windows" ]; then BINARY_SUFFIX=".exe"; fi
-          LD_FLAGS="-w -s -X gypsum.gypsumVersion=test -X gypsum.gypsumCommit=$(git log --pretty=format:"%h" -1)"
-          go generate ./...
+          LD_FLAGS="-w -s -X github.com/yuudi/gypsum/gypsum.gypsumVersion=test -X github.com/yuudi/gypsum/gypsum.gypsumCommit=$(git log --pretty=format:%H -1)"
           go build -o "dist/gypsum-test${BINARY_SUFFIX}" -ldflags "$LD_FLAGS" .
         env:
           CGO_ENABLED: 0

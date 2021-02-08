@@ -264,7 +264,8 @@ func uploadResource(c *gin.Context) {
 		return
 	}
 	// save info data
-	cursor++
+	itemCursor++
+	cursor := itemCursor
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    ResourceItem,
 		DisplayName: fileName + ext,

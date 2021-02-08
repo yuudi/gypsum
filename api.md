@@ -173,26 +173,26 @@ PUT `/rules/{rule_id}`
 
 对象结构：事件规则
 
-| 字段         | 类型             | 含义                     |
-| ------------ | ---------------- | ------------------------ |
-| display_name | string           | 显示名称                 |
-| activate     | boolean          | 当前规则是否启用         |
-| groups_id    | array\<integer\> | 匹配群，留空表示所有     |
-| users_id     | array\<integer\> | 匹配 QQ 号，留空表示所有 |
-| trigger_type | string\*         | 触发事件                 |
-| response     | string           | 回复模板                 |
-| priority     | integer          | 优先级                   |
-| block        | boolean          | 是否阻止后续规则         |
+| 字段         | 类型              | 含义                     |
+| ------------ | ----------------- | ------------------------ |
+| display_name | string            | 显示名称                 |
+| activate     | boolean           | 当前规则是否启用         |
+| groups_id    | array\<integer\>  | 匹配群，留空表示所有     |
+| users_id     | array\<integer\>  | 匹配 QQ 号，留空表示所有 |
+| trigger_type | \*array\<string\> | 触发事件                 |
+| response     | string            | 回复模板                 |
+| priority     | integer           | 优先级                   |
+| block        | boolean           | 是否阻止后续规则         |
 
-触发事件是一个字符串，格式为 `<detail-type>[/<sub-type>]`
+触发事件是一个字符串数组，含有 1 个或 2 个元素，格式为 `["<detail-type>", "<sub-type>"]`
 
 其中：  
 `detail-type` 为 onebot 协议中 `post_type` 或 `request_type` 的内容  
 `sub-type` 为 onebot 协议中 `sub_type` 的内容，可省略
 
 例如：  
-`group_increase/approve` 匹配 `群成员增加` 中的 `管理员同意入群` 事件  
-`group_increase` 匹配所有 `群成员增加` 事件
+`["group_increase","approve"]` 匹配 `群成员增加` 中的 `管理员同意入群` 事件  
+`["group_increase"]` 匹配所有 `群成员增加` 事件
 
 ### 列出所有事件规则
 
@@ -325,7 +325,7 @@ POST `/groups/{group_id}/resources/{file_name}{ext}`
 
 请求体为二进制文件
 
-返回 `status 201` `code=0`：成功  
+返回 `status 201` `code=0`：成功，返回 `resource_id`  
 返回 `status 200` `code=1`：资源已经存在，无需重复上传，返回已有的 `resource_id`
 
 上传资源前，可以先通过 `GET /resources/{sha256_sum}` 查询资源是否已存在（非必须）

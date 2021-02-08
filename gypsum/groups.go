@@ -327,7 +327,8 @@ func createGroup(c *gin.Context) {
 	}
 	group.ParentGroup = parentID
 
-	cursor++
+	itemCursor++
+	cursor := itemCursor
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    GroupItem,
 		DisplayName: group.DisplayName,
@@ -612,13 +613,52 @@ func importGroup(c *gin.Context) {
 		}
 	}
 	if newGroup == nil {
+		// no meta file in zip file
 		c.JSON(412, gin.H{
 			"code":    4000,
 			"message": fmt.Sprintf("zipfile has no gypsum metadata"),
 		})
 		return
 	}
-	cursor++
+	parentStr := c.Param("gid")
+	var parentID uint64
+	if len(parentStr) == 0 {
+		parentID = 0
+	} else {
+		var err error
+		parentID, err = strconv.ParseUint(parentStr, 10, 64)
+		if err != nil {
+			c.JSON(404, gin.H{
+				"code":    1000,
+				"message": "no such group",
+			})
+			return
+		}
+		if parentID != 0 {
+			c.JSON(400, gin.H{
+				"code":    1400,
+				"message": "group in group are not supported yet",
+			})
+			return
+		}
+	}
+	parentGroup, ok := groups[parentID]
+	if !ok {
+		c.JSON(404, gin.H{
+			"code":    1000,
+			"message": "group not found",
+		})
+		return
+	}
+	newGroup.ParentGroup = parentID
+
+	itemCursor++
+	cursor := itemCursor
+	parentGroup.Items = append(parentGroup.Items, Item{
+		ItemType:    GroupItem,
+		DisplayName: newGroup.DisplayName,
+		ItemID:      cursor,
+	})
 	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
