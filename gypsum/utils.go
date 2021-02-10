@@ -1,17 +1,24 @@
 package gypsum
 
 import (
+	cryptoRand "crypto/rand"
 	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/rand"
 	"regexp"
 	"strconv"
-	"time"
 )
 
+var hotSalt []byte
+
 func init() {
-	rand.Seed(time.Now().UTC().UnixNano())
+	seed := make([]byte, 8)
+	_, _ = cryptoRand.Read(seed)
+	rand.Seed(int64(binary.LittleEndian.Uint64(seed)))
+
+	hotSalt = make([]byte, 8)
+	rand.Read(hotSalt)
 }
 
 func U64ToBytes(i uint64) []byte {

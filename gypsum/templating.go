@@ -24,9 +24,6 @@ func initTemplating() error {
 	// enable auto-escape
 	pongo2.SetAutoescape(true)
 
-	if err := pongo2.RegisterFilter("cq", filterNoFilter); err != nil {
-		return err
-	}
 	if err := pongo2.RegisterFilter("silence", filterSilence); err != nil {
 		return err
 	}
@@ -53,11 +50,6 @@ var cqEscape = strings.NewReplacer("&", "&amp;", "[", "&#91;", "]", "&#93;", ","
 
 func filterEscapeCQCode(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
 	return pongo2.AsValue(cqEscape.Replace(in.String())), nil
-}
-
-// no-escape filter (same as "safe" filter)
-func filterNoFilter(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
-	return in, nil
 }
 
 func filterSilence(_ *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {

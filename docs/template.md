@@ -31,11 +31,11 @@ gypsum 的模板语法使用 [pongo2](https://github.com/flosch/pongo2)，语法
 
 ---
 
-默认情况下，变量中的 CQ码会被转义以保证安全，如果不希望模板的结果触发 CQ码，请使用 `cq` 过滤器。
+默认情况下，变量中的 CQ码会被转义以保证安全，如果不希望模板的结果触发 CQ码，请使用 `safe` 过滤器。
 
 ```jinja2
 你发送的消息是：{{ event.message }}
-CQ码解析后为：{{ event.message | cq }}
+CQ码解析后为：{{ event.message | safe }}
 ```
 
 ---
@@ -43,12 +43,12 @@ CQ码解析后为：{{ event.message | cq }}
 在模板变量中可以使用一些由 `gypsum` 提供的函数
 
 ```jinja2
-{{ at(event.user_id) | cq }}，你好
+{{ at(event.user_id) | safe }}，你好
 ```
 
 这里 `at` 是一个函数，接受了发送者的 user_id 之后，将其包装成一个 `@发送者` 的消息节点
 
-注意这里比如使用 `cq` 过滤器，将包装后的 CQ码 转化为实际发送的 `at`
+注意这里比如使用 `safe` 过滤器，将包装后的 CQ码 转化为实际发送的 `at`
 
 所有可用的函数可参考 [模板文档 - 函数](https://github.com/yuudi/gypsum/wiki/Templating)
 

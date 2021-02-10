@@ -11,6 +11,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
@@ -99,7 +100,40 @@ func (r *Resource) SaveToDB(idx uint64) error {
 }
 
 func resourcePath(filename string) string {
-	return path.Join(resDir, filename)
+	switch Config.ResourceShare {
+	case "file":
+		return path.Join(resDir, filename)
+	case "http":
+		expire := time.Now().Unix() + 300 // expire in 5 minutes
+		signBytes := sha256.Sum256(append(append([]byte(filename), U64ToBytes(uint64(expire))...), hotSalt...))
+		sign := hex.EncodeToString(signBytes[:])
+		return Config.HttpBackRef + "/contents/resources/" + filename + "?expire=" + strconv.FormatInt(expire, 10) + "&sign=" + sign
+	default:
+		log.Errorf("unknown config ResourceShare: %s", Config.ResourceShare)
+		return ""
+	}
+}
+
+func serveResource(c *gin.Context) {
+	filename := c.Params.ByName("filename")
+	expireStr := c.Query("expire")
+	sign := c.Query("sign")
+	expire, err := strconv.ParseInt(expireStr, 10, 64)
+	if err != nil {
+		c.String(400, "400 Bad Request: expire must be integer")
+		return
+	}
+	if time.Now().Unix() > expire {
+		c.String(403, "403 Forbidden: sign expired")
+		return
+	}
+	signedBytes := sha256.Sum256(append(append([]byte(filename), U64ToBytes(uint64(expire))...), hotSalt...))
+	signed := hex.EncodeToString(signedBytes[:])
+	if sign != signed {
+		c.String(403, "403 Forbidden: sign error")
+		return
+	}
+	c.File(path.Join(resDir, filename))
 }
 
 func (r *Resource) GetParentID() uint64 {

@@ -69,8 +69,11 @@ func initWeb() {
 	api.DELETE("/resources/:rid", deleteResource)
 	api.PATCH("/resources/:rid", renameResource)
 
-	var webAssets fs.FS
+	// resource backref
+	r.GET("/contents/resources/:filename", serveResource)
 
+	// web assets
+	var webAssets fs.FS
 	if len(Config.ExternalAssets) == 0 {
 		// internal assets
 		var err error
@@ -82,9 +85,9 @@ func initWeb() {
 		// external assets
 		webAssets = os.DirFS(Config.ExternalAssets)
 	}
-
 	r.GET("/assets/*filepath", gzipStatic.ServeGzipStatic(http.FS(webAssets)))
 
+	// home page
 	homePage := func(c *gin.Context) {
 		if gzipStatic.ShouldCompress(c.Request) {
 			c.Header("Vary", "Accept-Encoding")
@@ -94,7 +97,6 @@ func initWeb() {
 			c.Data(200, "text/html", publicIndex)
 		}
 	}
-
 	r.GET("/index.html", homePage)
 	r.GET("/", homePage)
 	//// wildcard for history router

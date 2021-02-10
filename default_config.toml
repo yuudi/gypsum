@@ -14,19 +14,23 @@ LogLevel = "INFO"
 # LogLevel = "WARNING"
 
 [Gypsum]
+
 # 网页控制台监听地址与端口
+#
 # 可以指定 http 监听方式，不指定时默认使用 http
 # Listen = "0.0.0.0:9900"
 # Listen = "http://0.0.0.0:9900"
+#
 # 可以指定使用 https 监听方式，更安全
 # 公钥私钥放在工作目录的 gypsum.pem 与 gypsum.key 文件，如果不存在则自签名
 # 如果启用 https，则控制台使用加密传输保证安全，但浏览器会提示“不信任的站点”，点击“信任此站点”即可
 # 如果启用 https，则不能再使用 http 访问
 # 反向代理中不建议使用 https
 # Listen = "https://0.0.0.0:9900"
-# 可以指定使用 unix socket 监听方式，配合反向代理使用效率更高
+#
+# 可以指定使用 http over unix socket 监听方式，配合反向代理使用效率更高
 # Listen = "unix://run/gypsum.sock"
-Listen = "0.0.0.0:9900"
+Listen = "http://0.0.0.0:9900"
 
 # 控制台账号
 Username = "admin"
@@ -45,6 +49,7 @@ ExternalAssets = ""
 ResourceShare = "file"
 
 # 如果文件传输方法选择 "http"，则填写 onebot 访问 gypsum 时使用的地址
+# 此方式使用与网页控制台相同的端口
 # "file" 方式可以不用填
 # HttpBackRef = "http://127.0.0.1:9900/"
 HttpBackRef = ""
