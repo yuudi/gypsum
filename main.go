@@ -13,6 +13,11 @@ import (
 	"github.com/yuudi/gypsum/gypsum"
 )
 
+var (
+	version = "0.0.0-unknown"
+	commit  = "unknown"
+)
+
 func main() {
 	var conf Config
 	if _, err := toml.DecodeFile("gypsum_config.toml", &conf); err != nil {
@@ -44,6 +49,8 @@ func main() {
 	})
 	//mw := io.MultiWriter(os.Stdout, logFile)
 	//log.SetOutput()
+	gypsum.BuildVersion = version
+	gypsum.BuildCommit = commit
 	gypsum.Config = conf.Gypsum
 	zero.Run(zero.Config{
 		Host:          conf.Host,

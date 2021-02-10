@@ -10,9 +10,22 @@ AccessToken = ""
 
 # 日志级别
 LogLevel = "INFO"
+# LogLevel = "DEBUG"
+# LogLevel = "WARNING"
 
 [Gypsum]
 # 网页控制台监听地址与端口
+# 可以指定 http 监听方式，不指定时默认使用 http
+# Listen = "0.0.0.0:9900"
+# Listen = "http://0.0.0.0:9900"
+# 可以指定使用 https 监听方式，更安全
+# 公钥私钥放在工作目录的 gypsum.pem 与 gypsum.key 文件，如果不存在则自签名
+# 如果启用 https，则控制台使用加密传输保证安全，但浏览器会提示“不信任的站点”，点击“信任此站点”即可
+# 如果启用 https，则不能再使用 http 访问
+# 反向代理中不建议使用 https
+# Listen = "https://0.0.0.0:9900"
+# 可以指定使用 unix socket 监听方式，配合反向代理使用效率更高
+# Listen = "unix://run/gypsum.sock"
 Listen = "0.0.0.0:9900"
 
 # 控制台账号
@@ -21,8 +34,20 @@ Username = "admin"
 # 控制台密码
 Password = "set-your-password-here"
 
-# 外部的静态文件路径，留空则用内部文件
+# 外部的静态文件目录，留空则用内部文件
+# 静态文件目录需要包含 index.html 文件与 assets/ 目录，且每个文件都要使用 gzip 进行预压缩，否则网页无法访问
 ExternalAssets = ""
+
+# 文件传输方法
+# 如果你的 gypsum 与 onebot 在同一个机器上，则使用 "file"
+# 如果 gypsum 与 onebot 在不同的机器上，则使用 "http"
+# ResourceShare = "http"
+ResourceShare = "file"
+
+# 如果文件传输方法选择 "http"，则填写 onebot 访问 gypsum 时使用的地址
+# "file" 方式可以不用填
+# HttpBackRef = "http://127.0.0.1:9900/"
+HttpBackRef = ""
 
 [ZeroBot]
 # BOT 昵称，叫昵称等同于 @BOT

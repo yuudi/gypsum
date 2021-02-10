@@ -13,17 +13,12 @@ jobs:
   build:
     name: Build Go Binaries
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        goos: [linux, windows]
-        goarch: [amd64]
-      max-parallel: 1  # avoid cache conflict
-      fail-fast: true
 
     steps:
-      - name: Checkout the Repo
+      - name: Checkout the repo
         uses: actions/checkout@v2
         with:
+          fetch-depth: 0
           submodules: true
 
       - name: Get frontend ref hash
@@ -35,7 +30,7 @@ jobs:
         uses: actions/cache@v2
         with:
           path: gypsum/web
-          key: gypsum-web-builds-${{ steps.frontend-ref.outputs.commit }}
+          key: gypsum-web-builds-precompressed-${{ steps.frontend-ref.outputs.commit }}
 
       - name: Setup Nodejs
         if: steps.cache-frontend-builds.outputs.cache-hit != 'true'
@@ -66,32 +61,60 @@ jobs:
           yarn build --dest ../gypsum/web
           gzip -rk9 ../gypsum/web
 
-      - name: Install Go
+      - name: Setup go
         uses: actions/setup-go@v2
         with:
           stable: false
           go-version: 1.16.0-rc1
 
-      - name: Cache Go Modules
+      - name: Cache go modules
         uses: actions/cache@v2
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('./go.sum') }}
-          restore-keys: ${{ runner.os }}-go-
+          restore-keys: |
+            ${{ runner.os }}-go-
 
-      - name: Build Binaries
-        run: |
-          if [ $GOOS = "windows" ]; then BINARY_SUFFIX=".exe"; fi
-          LD_FLAGS="-w -s -X github.com/yuudi/gypsum/gypsum.gypsumVersion=test -X github.com/yuudi/gypsum/gypsum.gypsumCommit=$(git log --pretty=format:%H -1)"
-          go build -o "dist/gypsum-test${BINARY_SUFFIX}" -ldflags "$LD_FLAGS" .
+      - name: Build binaries
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: build --snapshot --rm-dist
+
+      - name: Login to Docker Hub
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: docker/login-action@v1
+        with:
+          registry: docker.pkg.github.com
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: release --rm-dist
         env:
-          CGO_ENABLED: 0
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifact
         if: ${{ github.event_name != 'pull_request' }}
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.goos }}_${{ matrix.goarch }}
-          path: dist/
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+
+      - name: Backup binaries
+        uses: docker://rclone/rclone:1
+        with:
+          args: >-
+            copy dist remote:pan/gypsum/ci/${{ github.run_number }}/
+            --config scripts/rclone.conf
+            --include "/*.tar.gz"
+            --include "/*.zip"
+        env:
+          RCLONE_CONFIG_PASS: ${{ secrets.RCLONE_CONFIG_PASS }}

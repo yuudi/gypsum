@@ -78,6 +78,8 @@ github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJ
 github.com/modern-go/reflect2 v0.0.0-20180701023420-4b7aa43c6742/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/modern-go/reflect2 v1.0.1 h1:9f412s+6RmYXLWZSEzVVgPGK7C2PphHj5RJrvfx9AWI=
 github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
+github.com/modern-go/reflect2 v1.0.2-0.20210109003243-333559e1834b h1:6Xjqolv/0DDdUqlpnsTomXQvjvvkz7Ux7TcMALvozEw=
+github.com/modern-go/reflect2 v1.0.2-0.20210109003243-333559e1834b/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3RllmbCylyMrvgv0=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e h1:fD57ERR4JtEqsWbfPhv4DMiApHyliiK5xCTNVSPiaAs=
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
@@ -125,8 +127,12 @@ github.com/ugorji/go/codec v1.2.4 h1:C5VurWRRCKjuENsbM6GYVw8W++WVW9rSxoACKIvxzz8
 github.com/ugorji/go/codec v1.2.4/go.mod h1:bWBu1+kIRWcF8uMklKaJrR6fTWQOwAlrIzX22pHwryA=
 github.com/wdvxdr1123/ZeroBot v0.0.0-20210201162802-fe0da61c3a50 h1:WEibLShtAHTFxfcer7m3BGGwTFUz+Go2tiZPNQffaBs=
 github.com/wdvxdr1123/ZeroBot v0.0.0-20210201162802-fe0da61c3a50/go.mod h1:gLbXG9V6XBIKJ/ty9zZnIl3rTPpYGYnPbtFb7yN0/wg=
+github.com/wdvxdr1123/ZeroBot v0.0.0-20210209095145-f7131dd3ccbf h1:EyMJ0YAF2tkwe8gIlVQExQvtynjjuBXeBjhTVy7o4V8=
+github.com/wdvxdr1123/ZeroBot v0.0.0-20210209095145-f7131dd3ccbf/go.mod h1:8OhFec3GHpK2dARpPkuM7fHzSv//5ImF3X/2TEYQtec=
 github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da h1:NimzV1aGyq29m5ukMK0AMWEhFaL/lrEOaephfuoiARg=
 github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da/go.mod h1:E1AXubJBdNmFERAOucpDIxNzeGfLzg0mYh+UfMWdChA=
+golang.org/dl v0.0.0-20210204224843-1557c60ec592 h1:GU5BB6jCTo/NbOo4bkZB5ZD2cRqqGbil8S7HfDcNSzo=
+golang.org/dl v0.0.0-20210204224843-1557c60ec592/go.mod h1:IUMfjQLJQd4UTqG1Z90tenwKoCX93Gn3MAQJMOSBsDQ=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad h1:DN0cp81fZ3njFcrLCytUHRSUkqBjfTo4Tx9RJTWs0EY=

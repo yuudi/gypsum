@@ -1,6 +1,8 @@
 builds:
-  - env:
+  - id: gypsum
+    env:
       - CGO_ENABLED=0
+      - GO111MODULE=on
     goos:
       - linux
       - windows
@@ -19,15 +21,12 @@ builds:
         goarch: arm
       - goarm: windows
         goarch: arm64
-    ldflags:
-      - >-
-        -s
-        -w
-        -X github.com/yuudi/gypsum/gypsum.gypsumVersion={{.Version}}
-        -X github.com/yuudi/gypsum/gypsum.gypsumCommit={{.ShortCommit}}
+    flags:
+      - -tags=jsoniter
+      - -trimpath
 archives:
   - replacements:
-      darwin: macOS
+      darwin: mac
       386: x86
       amd64: x86_64
     format: tar.gz
@@ -37,5 +36,16 @@ archives:
         format: zip
     files:
       - NOFILE*
+changelog:
+  skip: true
 checksum:
   disable: true
+dockers:
+  - goos: linux
+    goarch: amd64
+    ids:
+      - gypsum
+    dockerfile: scripts/add.Dockerfile
+    image_templates:
+      - "docker.pkg.github.com/yuudi/gypsum/gypsum:latest"
+      - "docker.pkg.github.com/yuudi/gypsum/gypsum:{{ .Tag }}"

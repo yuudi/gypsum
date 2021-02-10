@@ -4,12 +4,14 @@ import (
 	"embed"
 	"io/fs"
 	"net/http"
+	"os"
+	"strings"
 
 	gzipForGin "github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 
-	gzipStatic "github.com/yuudi/gypsum/helper/gin_middleware_gzip_static"
+	gzipStatic "github.com/yuudi/gypsum/gypsum/helper/gin_middleware_gzip_static"
 )
 
 //go:generate gzip -rk9 web
@@ -23,7 +25,7 @@ var publicIndex []byte
 //go:embed web/index.html.gz
 var publicIndexGz []byte
 
-func serveWeb() {
+func initWeb() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
 
@@ -67,13 +69,19 @@ func serveWeb() {
 	api.DELETE("/resources/:rid", deleteResource)
 	api.PATCH("/resources/:rid", renameResource)
 
-	webAssets, err := fs.Sub(publicAssets, "web/assets")
-	if err != nil {
-		log.Fatal("directory `web` not compiled")
+	var webAssets fs.FS
+
+	if len(Config.ExternalAssets) == 0 {
+		// internal assets
+		var err error
+		webAssets, err = fs.Sub(publicAssets, "web/assets")
+		if err != nil {
+			log.Fatal("directory `web` not compiled")
+		}
+	} else {
+		// external assets
+		webAssets = os.DirFS(Config.ExternalAssets)
 	}
-	//assetsGroup := r.Group("/assets")
-	//assetsGroup.Use(gzipStatic.ServeGzipStatic)
-	//assetsGroup.StaticFS("/", http.FS(webAssets))
 
 	r.GET("/assets/*filepath", gzipStatic.ServeGzipStatic(http.FS(webAssets)))
 
@@ -95,19 +103,33 @@ func serveWeb() {
 		c.Data(404, "text/plain", []byte("404 Not Found"))
 	})
 
-	err = r.Run(Config.Listen)
-	if err != nil {
-		log.Errorf("binding address error: %s", err)
-		// panic(err)
+	go serveWeb(r, Config.Listen)
+}
+
+func serveWeb(r *gin.Engine, listen string) {
+	if strings.HasPrefix(listen, "http://") {
+		err := r.Run(listen[len("http://"):])
+		if err != nil {
+			log.Fatalf("binding address error: %s", err)
+		}
+	} else if strings.HasPrefix(listen, "https://") {
+		pub, priv, err := getTlsKeys()
+		if err != nil {
+			log.Fatalf("get tls key error: %s", err)
+		}
+		err = r.RunTLS(listen[len("https://"):], pub, priv)
+		if err != nil {
+			log.Fatalf("binding address error: %s", err)
+		}
+	} else if strings.HasPrefix(listen, "unix://") {
+		err := r.RunUnix(listen[len("unix:/"):])
+		if err != nil {
+			log.Fatalf("binding address error: %s", err)
+		}
+	} else {
+		err := r.Run(listen)
+		if err != nil {
+			log.Fatalf("binding address error: %s", err)
+		}
 	}
-}
-
-type RestError struct {
-	Status  int
-	Code    int
-	Message string
-}
-
-func (r RestError) Error() string {
-	return r.Message
 }

@@ -44,6 +44,7 @@ type GroupArchive struct {
 	PluginName    string
 	PluginVersion int64
 	GypsumVersion string
+	GypsumCommit  string
 	ArchiveItems  []ArchiveItem
 }
 
@@ -107,7 +108,8 @@ func (g Group) ExportToArchive(name string, version int64) *GroupArchive {
 		DisplayName:   g.DisplayName,
 		PluginName:    name,
 		PluginVersion: version,
-		GypsumVersion: gypsumVersion,
+		GypsumVersion: BuildVersion,
+		GypsumCommit:  BuildCommit,
 		ArchiveItems:  archiveItems,
 	}
 }
@@ -118,6 +120,7 @@ func GroupFromArchiveReader(reader io.Reader) (*Group, error) {
 		PluginName:    "",
 		PluginVersion: 0,
 		GypsumVersion: "",
+		GypsumCommit:  "",
 		ArchiveItems:  nil,
 	}
 	decoder := gob.NewDecoder(reader)
