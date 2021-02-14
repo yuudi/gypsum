@@ -2,7 +2,6 @@ package gypsum
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -46,7 +45,6 @@ var (
 )
 
 func init() {
-	fmt.Printf("gypsum %s, commit %s\n\n", BuildVersion, BuildCommit)
 	zero.RegisterPlugin(&gypsumPlugin{}) // 注册插件
 }
 

@@ -23,6 +23,16 @@ gypsym 需要配合 onebot 使用，例如：[go-cqhttp](https://go-cqhttp.org/)
 1. 启动 `onebot` ，再启动 `gypsum`
 1. 打开 `<你的ip地址>:9900`，开始使用
 
+### Docker
+
+```shell
+curl -sL https://github.com/yuudi/gypsum/raw/master/scripts/download.Dockerfile | docker build -t gypsum:latest -f - .
+docker run --rm -v ${PWD}/gypsum:/gypsum gypsum
+# 修改 gypsum/gypsum_data/gypsum_config.toml 文件后
+docker rum -d -v ${PWD}/gypsum:/gypsum --name gypsum gypsum
+# 最好同时将 gypsum 目录挂载至 gocqhttp 容器，以便共享文件
+```
+
 ## todo
 
 ### 1.0

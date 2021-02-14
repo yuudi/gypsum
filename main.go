@@ -19,6 +19,7 @@ var (
 )
 
 func main() {
+	fmt.Printf("gypsum %s, commit %s\n\n", version, commit)
 	var conf Config
 	if _, err := toml.DecodeFile("gypsum_config.toml", &conf); err != nil {
 		if os.IsNotExist(err) {

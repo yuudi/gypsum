@@ -179,7 +179,13 @@ func (r *Rule) Register(id uint64) error {
 	case Command:
 		msgRule = zero.CommandRule(r.Patterns...)
 	case Regex:
-		msgRule = zero.RegexRule(r.Patterns[0])
+		if len(r.Patterns) == 0 {
+			msgRule = func(_ *zero.Event, _ zero.State) bool {
+				return false
+			}
+		} else {
+			msgRule = zero.RegexRule(r.Patterns[0])
+		}
 	default:
 		log.Errorf("Unknown type %#v", r.MatcherType)
 		return errors.New(fmt.Sprintf("Unknown type %#v", r.MatcherType))

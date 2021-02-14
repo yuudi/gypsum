@@ -10,7 +10,8 @@ import (
 	"strconv"
 )
 
-var hotSalt []byte
+var hotSalt []byte  // refresh at every start
+var coldSalt []byte  //
 
 func init() {
 	seed := make([]byte, 8)
