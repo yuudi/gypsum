@@ -1,4 +1,4 @@
-# 模板语法
+# 模板语法简介
 
 gypsum 的模板语法使用 [pongo2](https://github.com/flosch/pongo2)，语法类似于 `jinja2` 和 `Django`
 
@@ -26,12 +26,12 @@ gypsum 的模板语法使用 [pongo2](https://github.com/flosch/pongo2)，语法
 你好，{{ event.sender.nickname }}
 ```
 
-其中：`event` 是收到的事件对象，具体结构可参照按照 [onebot 标准](https://github.com/howmanybots/onebot/blob/master/v11/specs/event)。
+其中：`event` 是收到的事件对象，具体结构可参照按照 [onebot 标准](https://github.com/howmanybots/onebot/blob/master/v11/specs/event)。  
 注意只有事件触发的模板才能使用 `event`，定时任务中的模板是没有 `event` 对象的。
 
 ---
 
-默认情况下，变量中的 CQ码会被转义以保证安全，如果不希望模板的结果触发 CQ码，请使用 `safe` 过滤器。
+默认情况下，变量中的 CQ码会被转义以保证安全，如果不希望模板的结果触发 CQ 码，请使用 `safe` 过滤器。
 
 ```jinja2
 你发送的消息是：{{ event.message }}
@@ -50,7 +50,7 @@ CQ码解析后为：{{ event.message | safe }}
 
 注意这里比如使用 `safe` 过滤器，将包装后的 CQ码 转化为实际发送的 `at`
 
-所有可用的函数可参考 [模板文档 - 函数](https://github.com/yuudi/gypsum/wiki/Templating)
+所有可用的函数可参考 [模板文档 - 函数](./functions.md)
 
 ---
 
@@ -63,7 +63,7 @@ CQ码解析后为：{{ event.message | safe }}
 https://baidu.com/s?wd={{ url_encode(state.args) }}
 ```
 
-每种触发方式产生的 `state` 对象不同，具体可参考 [模板文档 - 变量](https://github.com/yuudi/gypsum/wiki/Templating)
+每种触发方式产生的 `state` 对象不同，具体可参考 [模板文档 - 变量](./variables.md)
 
 ---
 
@@ -93,4 +93,4 @@ print(a..c)
 ```
 
 你可能注意到了，在 Lua 代码块中，使用 `print` 函数会将结果输出到控制台，使用 `write` 函数会将结果写入模板。
-在 Lua 代码块中所有可用的函数可参考 [模板文档 - Lua 代码块](https://github.com/yuudi/gypsum/wiki/Lua)
+在 Lua 代码块中所有可用的函数可参考 [模板文档 - Lua 代码块](./lua.md)

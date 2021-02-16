@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb"
 
+	"github.com/yuudi/gypsum/gypsum/helper/cqcode"
 	"github.com/yuudi/gypsum/gypsum/luatag"
 )
 
@@ -32,7 +33,6 @@ func initTemplating() error {
 	pongo2.Globals["at"] = at
 	pongo2.Globals["res"] = resourcePath
 	pongo2.Globals["image"] = image
-	pongo2.Globals["dynamic_image"] = dynamicImage
 	pongo2.Globals["sleep"] = sleep
 	pongo2.Globals["random_int"] = randomInt
 	pongo2.Globals["db_get"] = dbGet
@@ -46,10 +46,8 @@ func initTemplating() error {
 	return nil
 }
 
-var cqEscape = strings.NewReplacer("&", "&amp;", "[", "&#91;", "]", "&#93;", ",", "&#44;")
-
 func filterEscapeCQCode(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
-	return pongo2.AsValue(cqEscape.Replace(in.String())), nil
+	return pongo2.AsValue(cqcode.Escape(in.String())), nil
 }
 
 func filterSilence(_ *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
@@ -74,13 +72,19 @@ func atqq(qq interface{}) string {
 	}
 }
 
-func image(src string) string {
+func image(src string, args ...int) string {
 	// onenot can handle it well :)
-	return fmt.Sprintf("[CQ:image,file=%v] ", src)
-}
-
-func dynamicImage(src string) string {
-	return fmt.Sprintf("[CQ:image,cache=0,file=%v] ", src)
+	var cache int
+	switch len(args) {
+	case 0:
+		cache = 1
+	case 1:
+		cache = args[0]
+	default:
+		log.Warn("function image: too many arguments")
+		cache = args[0]
+	}
+	return fmt.Sprintf("[CQ:image,cache=%d,file=%s] ", cache, src)
 }
 
 func sleep(duration interface{}) string {

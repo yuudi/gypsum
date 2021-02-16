@@ -4,6 +4,7 @@ go 1.16
 
 require (
 	github.com/BurntSushi/toml v0.3.1
+	github.com/cjoudrey/gluahttp v0.0.0-20201111170219-25003d9adfa9
 	github.com/flosch/pongo2 v0.0.0-20200913210552-0d938eb266f3
 	github.com/gin-contrib/gzip v0.0.3
 	github.com/gin-gonic/gin v1.6.3
@@ -16,8 +17,9 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
+	github.com/tidwall/pretty v1.0.5 // indirect
 	github.com/ugorji/go v1.2.4 // indirect
-	github.com/wdvxdr1123/ZeroBot v0.0.0-20210209095145-f7131dd3ccbf
+	github.com/wdvxdr1123/ZeroBot v0.0.0-20210214154537-b88c3977a0c1
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
 	google.golang.org/protobuf v1.25.0 // indirect

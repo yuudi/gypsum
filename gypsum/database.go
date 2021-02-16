@@ -5,6 +5,8 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb"
+
+	"github.com/yuudi/gypsum/gypsum/luatag"
 )
 
 var db *leveldb.DB
@@ -38,6 +40,7 @@ func initDb() error {
 			return err
 		}
 	}
+	luatag.SetDB(db)
 	return nil
 }
 

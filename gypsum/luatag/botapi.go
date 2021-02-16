@@ -7,18 +7,13 @@ import (
 	luaJson "layeh.com/gopher-json"
 )
 
-func Writer(w interface{ WriteString(string) (int, error) }) func(*lua.LState) int {
-	return func(L *lua.LState) int {
-		top := L.GetTop()
-		for i := 1; i <= top; i++ {
-			_, _ = w.WriteString(L.ToStringMeta(L.Get(i)).String())
-			if i != top {
-				_, _ = w.WriteString(" ")
-			}
-		}
-		_, _ = w.WriteString("\n")
-		return 0
-	}
+func botModLoader(L *lua.LState) int {
+	mod := L.NewTable()
+	L.SetFuncs(mod, map[string]lua.LGFunction{
+		"api": botApi,
+	})
+	L.Push(mod)
+	return 1
 }
 
 func botApi(L *lua.LState) int {

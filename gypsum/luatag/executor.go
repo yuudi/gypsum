@@ -2,7 +2,9 @@ package luatag
 
 import (
 	"bytes"
+	"net/http"
 
+	"github.com/cjoudrey/gluahttp"
 	"github.com/flosch/pongo2"
 	log "github.com/sirupsen/logrus"
 	"github.com/yuin/gopher-lua"
@@ -25,7 +27,10 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 		L = lua.NewState()
 		// the close function are called by executor caller
 
-		luaJson.Preload(L)
+		L.PreloadModule("bot", botModLoader)
+		L.PreloadModule("database", dbLoader)
+		L.PreloadModule("json", luaJson.Loader)
+		L.PreloadModule("http", gluahttp.NewHttpModule(&http.Client{}).Loader)
 		var luaEvent lua.LValue
 		event, ok := ctx.Public["json_event"]
 		if !ok {
@@ -38,9 +43,9 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 				return nil
 			}
 		}
-		L.SetGlobal("write", L.NewFunction(Writer(writer)))
+		L.SetGlobal("write", L.NewFunction(Writer(writer, false)))
+		L.SetGlobal("write_safe", L.NewFunction(Writer(writer, true)))
 		L.SetGlobal("event", luaEvent)
-		L.SetGlobal("botapi", L.NewFunction(botApi))
 		ctx.Public["_lua"] = L
 	}
 	if err := L.DoString(s); err != nil {

@@ -11,7 +11,7 @@ import (
 )
 
 var hotSalt []byte  // refresh at every start
-var coldSalt []byte  //
+var coldSalt []byte //
 
 func init() {
 	seed := make([]byte, 8)

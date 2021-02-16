@@ -18,6 +18,7 @@ gypsum 是受到 [铃心自定义](http://myepk.club/) 的启发，基于 [ZeroB
 gypsym 需要配合 onebot 使用，例如：[go-cqhttp](https://go-cqhttp.org/)、[onebot-mirai](https://github.com/yyuueexxiinngg/onebot-kotlin)、[node-onebot](https://github.com/takayama-lily/node-onebot)、[XQ-HTTP](https://discourse.xianqubot.com/t/topic/50)等
 
 1. 修改 `onebot` 的配置文件，启用`正向ws`
+1. 在 [release](https://github.com/yuudi/gypsum/releases/latest) 中下载可执行文件
 1. 启动一次 `gypsum`，生成 `gypsum_config.toml` 配置文件
 1. 向 `gypsum_config.toml` 配置文件中填写`正向ws`连接参数、网页端口、账号、密码
 1. 启动 `onebot` ，再启动 `gypsum`
@@ -32,6 +33,10 @@ docker run --rm -v ${PWD}/gypsum:/gypsum gypsum
 docker rum -d -v ${PWD}/gypsum:/gypsum --name gypsum gypsum
 # 最好同时将 gypsum 目录挂载至 gocqhttp 容器，以便共享文件
 ```
+
+### 模板
+
+详见[模板说明](./docs/template.md)
 
 ## todo
 
@@ -49,15 +54,15 @@ docker rum -d -v ${PWD}/gypsum:/gypsum --name gypsum gypsum
   - [x] 更强大的回复模板
   - [x] 模板中使用 Lua
     - [x] Lua 调用 bot API
-    - [ ] Lua 访问 KV 数据库
-    - [ ] Lua 发起网络请求
-  - [ ] 模板文档
+    - [x] Lua 访问 KV 数据库
+    - [x] Lua 发起网络请求
+  - [x] 模板文档
   - [ ] 模板测试
-- [ ] 内置频率控制器
-- [ ] 内置积分系统
 - [x] 分组
 - [x] 组导入导出
 
 ### 1.1+
 
 - [ ] 更强大的前端编辑器
+- [ ] 内置频率控制器
+- [ ] 内置积分系统
