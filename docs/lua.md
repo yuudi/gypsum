@@ -1,5 +1,9 @@
 # Lua 代码块
 
+## 标准库
+
+在 lua 代码块中可以使用 lua 标准库与 openlib 中的函数，可参考[lua 教程](https://wizardforcel.gitbooks.io/lua-doc/content/8.html)。
+
 ## 变量
 
 ### event
@@ -25,7 +29,7 @@ write("你好")
 
 ### write_safe
 
-将目标写入回复模板，此方法**不会**对 CQ 码进行转义
+将目标写入回复模板，此方法**不会**对 CQ 码进行转义。
 
 参数：若干个任意参数
 
@@ -36,6 +40,28 @@ write("你好")
 write_safe("[CQ:at,qq=" .. event.user_id .. "] 你好")
 {% endlua %}
 ```
+
+### send
+
+立刻发送一条消息，此方法会对 CQ 码进行转义。
+
+参数：字符串
+
+限制：仅限消息与事件（定时任务中无法使用）
+
+用法示例：
+
+```lua
+{% lua %}
+send("处理中，请稍等……")
+sleep(10)
+write("处理完毕")
+{% endlua %}
+```
+
+### send_safe
+
+同上，此方法**不会**对 CQ 码进行转义。
 
 ## 模块
 
@@ -114,6 +140,10 @@ local json = require("json")
 json_data = '{"code":0,"message":"ok"}'
 table_data = json.decode(raw_data)
 print("code is", table_data.code)
+
+table_data.new_key = "new value"
+new_json = json.encode(table_data)
+print(new_json)
 {% endlua %}
 ```
 

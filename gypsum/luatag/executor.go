@@ -7,6 +7,7 @@ import (
 	"github.com/cjoudrey/gluahttp"
 	"github.com/flosch/pongo2"
 	log "github.com/sirupsen/logrus"
+	zero "github.com/wdvxdr1123/ZeroBot"
 	"github.com/yuin/gopher-lua"
 	luaJson "layeh.com/gopher-json"
 )
@@ -43,9 +44,41 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 				return nil
 			}
 		}
+		var luaState lua.LValue
+		state, ok := ctx.Public["state"]
+		if !ok {
+			luaState = lua.LNil
+		} else {
+			luaState = L.NewTable()
+			for k, i := range state.(zero.State) {
+				switch v := i.(type) {
+				case string:
+					L.SetField(luaState, k, lua.LString(v))
+				case []string:
+					list := L.NewTable()
+					for _, s := range v {
+						list.Append(lua.LString(s))
+					}
+					L.SetField(luaState, k, list)
+				default:
+					log.Warnf("unknown type in state: %#v", v)
+				}
+			}
+		}
+		var metaEvent *zero.Event
+		metaEventInterface, ok := ctx.Public["_event"]
+		if ok {
+			metaEvent = metaEventInterface.(*zero.Event)
+		} else {
+			metaEvent = nil
+		}
 		L.SetGlobal("write", L.NewFunction(Writer(writer, false)))
 		L.SetGlobal("write_safe", L.NewFunction(Writer(writer, true)))
+		L.SetGlobal("send", L.NewFunction(Sender(metaEvent, false)))
+		L.SetGlobal("send_safe", L.NewFunction(Sender(metaEvent, true)))
+		L.SetGlobal("sleep", L.NewFunction(luaSleep))
 		L.SetGlobal("event", luaEvent)
+		L.SetGlobal("state", luaState)
 		ctx.Public["_lua"] = L
 	}
 	if err := L.DoString(s); err != nil {

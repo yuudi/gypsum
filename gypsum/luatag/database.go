@@ -45,7 +45,7 @@ func dbGet(L *lua.LState) int {
 		}
 		log.Error(err)
 		L.Push(lua.LNil)
-		L.Push(lua.LString("database error: "+err.Error()))
+		L.Push(lua.LString("database error: " + err.Error()))
 		return 2
 	}
 	var data *lua.LValue
@@ -55,7 +55,7 @@ func dbGet(L *lua.LState) int {
 	if err := decoder.Decode(&data); err != nil {
 		log.Errorf("error when reading data from database: %s", err)
 		L.Push(lua.LNil)
-		L.Push(lua.LString("error when reading data from database: "+err.Error()))
+		L.Push(lua.LString("error when reading data from database: " + err.Error()))
 		return 2
 	}
 	L.Push(*data)
@@ -70,12 +70,12 @@ func dbPut(L *lua.LState) int {
 	encoder := gob.NewEncoder(&buffer)
 	if err := encoder.Encode(&value); err != nil {
 		log.Errorf("error when encode valueStore as bytes: %s", err)
-		L.Push(lua.LString("error when encode valueStore as bytes: "+err.Error()))
+		L.Push(lua.LString("error when encode valueStore as bytes: " + err.Error()))
 		return 1
 	}
 	if err := db.Put(append([]byte("gypsum-userDB-lua-"), bytesKey...), buffer.Bytes(), nil); err != nil {
 		log.Errorf("error when put value to database: %s", err)
-		L.Push(lua.LString("error when put value to database: "+err.Error()))
+		L.Push(lua.LString("error when put value to database: " + err.Error()))
 		return 1
 	}
 	return 0

@@ -37,7 +37,7 @@ archives:
     files:
       - NOFILE*
 changelog:
-  skip: true
+  skip: false
 checksum:
   disable: true
 dockers:

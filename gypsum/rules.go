@@ -220,7 +220,20 @@ func templateRuleHandler(tmpl pongo2.Template) zero.Handler {
 				}
 				return fmt.Sprintf("[CQ:at,qq=%d]", event.UserID)
 			},
-			"_lua": luaState,
+			"group_ban": func(duration interface{}) {
+				if event.GroupID == 0 {
+					log.Warnf("cannot ban sender in event %s/%s", event.PostType, event.SubType)
+					return
+				}
+				d, err := AnyToInt64(duration)
+				if err != nil {
+					log.Warnf("cannot convert %#v to int64", duration)
+					return
+				}
+				zero.SetGroupBan(event.GroupID, event.UserID, d)
+			},
+			"_event": &event,
+			"_lua":   luaState,
 		})
 		if err != nil {
 			log.Errorf("error when rendering template：%s", err)
@@ -363,7 +376,7 @@ func createRule(c *gin.Context) {
 			})
 			return
 		}
-		if err := checkRegex(rule.Patterns[1]); err != nil {
+		if err := checkRegex(rule.Patterns[0]); err != nil {
 			c.JSON(422, gin.H{
 				"code":    2002,
 				"message": fmt.Sprintf("cannot compile regex pattern: %s", err),
@@ -508,7 +521,7 @@ func modifyRule(c *gin.Context) {
 			})
 			return
 		}
-		if err := checkRegex(newRule.Patterns[1]); err != nil {
+		if err := checkRegex(newRule.Patterns[0]); err != nil {
 			c.JSON(422, gin.H{
 				"code":    2002,
 				"message": fmt.Sprintf("cannot compile regex pattern: %s", err),

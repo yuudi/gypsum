@@ -33,13 +33,14 @@ func init() {
 	gob.Register(Trigger{})
 }
 
-func RestoreFromUserRecord(itemType ItemType, itemBytes []byte) (uint64, error) {
+func RestoreFromUserRecord(itemType ItemType, itemBytes []byte, newParentID uint64) (uint64, error) {
 	switch itemType {
 	case RuleItem:
 		rule, err := RuleFromBytes(itemBytes)
 		if err != nil {
 			return 0, err
 		}
+		rule.ParentGroup = newParentID
 		itemCursor++
 		cursor := itemCursor
 		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
@@ -55,6 +56,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte) (uint64, error) 
 		if err != nil {
 			return 0, err
 		}
+		trigger.ParentGroup = newParentID
 		itemCursor++
 		cursor := itemCursor
 		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
@@ -70,6 +72,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte) (uint64, error) 
 		if err != nil {
 			return 0, err
 		}
+		job.ParentGroup = newParentID
 		itemCursor++
 		cursor := itemCursor
 		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
@@ -85,6 +88,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte) (uint64, error) 
 		if err != nil {
 			return 0, err
 		}
+		resource.ParentGroup = newParentID
 		itemCursor++
 		cursor := itemCursor
 		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {

@@ -5,6 +5,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"math/rand"
+	"net/url"
 	"strings"
 	"time"
 
@@ -35,6 +36,7 @@ func initTemplating() error {
 	pongo2.Globals["image"] = image
 	pongo2.Globals["sleep"] = sleep
 	pongo2.Globals["random_int"] = randomInt
+	pongo2.Globals["url_encode"] = url.QueryEscape
 	pongo2.Globals["db_get"] = dbGet
 	pongo2.Globals["db_put"] = dbPut
 
@@ -88,7 +90,7 @@ func image(src string, args ...int) string {
 }
 
 func sleep(duration interface{}) string {
-	seconds, err := ToFloat(duration)
+	seconds, err := AnyToFloat(duration)
 	if err != nil {
 		log.Warnf("error: cannot accept %#v as interger", duration)
 		return "ERROR"

@@ -42,3 +42,5 @@
 `state.regex_matched[0]` 为 `1d6`  
 `state.regex_matched[1]` 为 `1`  
 `state.regex_matched[2]` 为 `6`
+
+> 注意：在 lua 中 state.regex_matched 的序号是从 1 开始的

@@ -114,7 +114,7 @@ func (g Group) ExportToArchive(name string, version int64) *GroupArchive {
 	}
 }
 
-func GroupFromArchiveReader(reader io.Reader) (*Group, error) {
+func GroupFromArchiveReader(reader io.Reader, newGroupID uint64) (*Group, error) {
 	ga := &GroupArchive{
 		DisplayName:   "",
 		PluginName:    "",
@@ -137,7 +137,7 @@ func GroupFromArchiveReader(reader io.Reader) (*Group, error) {
 	}
 	g.Items = make([]Item, len(ga.ArchiveItems))
 	for i, item := range ga.ArchiveItems {
-		idx, err := RestoreFromUserRecord(item.ItemType, item.ItemBytes)
+		idx, err := RestoreFromUserRecord(item.ItemType, item.ItemBytes, newGroupID)
 		if err != nil {
 			log.Error(err)
 			continue
@@ -551,6 +551,8 @@ func importGroup(c *gin.Context) {
 		})
 	}
 	var newGroup *Group
+	itemCursor++
+	cursor := itemCursor
 	for _, file := range zipReader.File {
 		if file.Name == "gypsum-plugin.dat" {
 			fr, err := file.Open()
@@ -562,7 +564,7 @@ func importGroup(c *gin.Context) {
 				})
 				return
 			}
-			newGroup, err = GroupFromArchiveReader(fr)
+			newGroup, err = GroupFromArchiveReader(fr, cursor)
 			if err != nil {
 				log.Error(err)
 				c.JSON(500, gin.H{
@@ -655,8 +657,6 @@ func importGroup(c *gin.Context) {
 	}
 	newGroup.ParentGroup = parentID
 
-	itemCursor++
-	cursor := itemCursor
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    GroupItem,
 		DisplayName: newGroup.DisplayName,
@@ -715,7 +715,7 @@ func deleteGroup(c *gin.Context) {
 		return
 	}
 	movePatch := groupMoveTo{}
-	if err := c.BindJSON(movePatch); err != nil {
+	if err := c.BindJSON(&movePatch); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
 			"message": fmt.Sprintf("converting error: %s", err),

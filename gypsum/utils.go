@@ -32,7 +32,7 @@ func ToUint(b []byte) uint64 {
 	return binary.LittleEndian.Uint64(b)
 }
 
-func ToFloat(unk interface{}) (float64, error) {
+func AnyToFloat(unk interface{}) (float64, error) {
 	switch i := unk.(type) {
 	case float64:
 		return i, nil
@@ -58,6 +58,35 @@ func ToFloat(unk interface{}) (float64, error) {
 		return strconv.ParseFloat(i, 64)
 	default:
 		return 0, errors.New(fmt.Sprintf("error: cannot accept %#v as float", unk))
+	}
+}
+
+func AnyToInt64(unk interface{}) (int64, error) {
+	switch i := unk.(type) {
+	case int64:
+		return int64(i), nil
+	case int32:
+		return int64(i), nil
+	case float64:
+		return int64(i), nil
+	case float32:
+		return int64(i), nil
+	case int16:
+		return int64(i), nil
+	case int:
+		return int64(i), nil
+	case uint64:
+		return int64(i), nil
+	case uint32:
+		return int64(i), nil
+	case uint16:
+		return int64(i), nil
+	case uint:
+		return int64(i), nil
+	case string:
+		return strconv.ParseInt(i, 10, 64)
+	default:
+		return 0, errors.New(fmt.Sprintf("error: cannot accept %#v as int", unk))
 	}
 }
 

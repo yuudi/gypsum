@@ -135,7 +135,20 @@ func templateTriggerHandler(tmpl pongo2.Template) zero.Handler {
 					zero.SetGroupAddRequest(event.Flag, event.SubType, true, "")
 				}
 			},
-			"_lua": luaState,
+			"group_ban": func(duration interface{}) {
+				if event.GroupID == 0 {
+					log.Warnf("cannot ban sender in event %s/%s", event.PostType, event.SubType)
+					return
+				}
+				d, err := AnyToInt64(duration)
+				if err != nil {
+					log.Warnf("cannot convert %#v to int64", duration)
+					return
+				}
+				zero.SetGroupBan(event.GroupID, event.UserID, d)
+			},
+			"_event": &event,
+			"_lua":   luaState,
 		})
 		if err != nil {
 			log.Errorf("渲染模板出错：%s", err)
