@@ -12,9 +12,6 @@ gypsum 是受到 [铃心自定义](http://myepk.club/) 的启发，基于 [ZeroB
 
 ## 用法
 
-**！！！警告：预览版本仅供测试，用于生产环境请谨慎**  
-**！！！警告：预览版本接口尚未稳定，可能会进行不兼容更新**
-
 gypsym 需要配合 onebot 使用，例如：[go-cqhttp](https://go-cqhttp.org/)、[onebot-mirai](https://github.com/yyuueexxiinngg/onebot-kotlin)、[node-onebot](https://github.com/takayama-lily/node-onebot)、[XQ-HTTP](https://discourse.xianqubot.com/t/topic/50)等
 
 1. 修改 `onebot` 的配置文件，启用`正向ws`
@@ -23,6 +20,23 @@ gypsym 需要配合 onebot 使用，例如：[go-cqhttp](https://go-cqhttp.org/)
 1. 向 `gypsum_config.toml` 配置文件中填写`正向ws`连接参数、网页端口、账号、密码
 1. 启动 `onebot` ，再启动 `gypsum`
 1. 打开 `<你的ip地址>:9900`，开始使用
+
+### 一键脚本
+
+Windows 用户可以使用一键脚本快速安装 `gypsum` 与 `gocqhttp`
+
+打开 powershell 并执行
+
+```powershell
+iwr "https://cdn.jsdelivr.net/gh/yuudi/gypsum`@master/scripts/gypsum-gocqhttp-installer.ps1" -O .\ginstall.ps1 ; ./ginstall.ps1 ; rm ginstall.ps1
+```
+
+如果提示没有权限，可以先执行
+
+```powershell
+# 设置允许执行远程脚本
+Start-Process -Wait -WindowStyle Hidden -Verb RunAs powershell.exe -Args "-executionpolicy bypass -command Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Force"
+```
 
 ### Docker
 

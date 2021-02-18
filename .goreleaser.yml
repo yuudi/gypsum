@@ -47,5 +47,5 @@ dockers:
       - gypsum
     dockerfile: scripts/add.Dockerfile
     image_templates:
-      - "docker.pkg.github.com/yuudi/gypsum/gypsum:latest"
-      - "docker.pkg.github.com/yuudi/gypsum/gypsum:{{ .Version }}"
+      - "ghcr.io/yuudi/gypsum:latest"
+      - "ghcr.io/yuudi/gypsum:{{ .Version }}"

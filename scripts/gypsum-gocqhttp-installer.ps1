@@ -36,26 +36,27 @@ if (Test-Path .\qqbot) {
 
 # 用户输入
 $qqid = Read-Host '请输入作为机器人的QQ号：'
-$qqpassword = Read-Host -AsSecureString '请输入作为机器人的QQ密码：'
+$qqpassword = Read-Host -AsSecureString '请输入作为机器人的QQ密码'
 
-$port = Read-Host '请输入端口（范围8000到49151，直接回车则随机）：'
+$web_user = Read-Host '请设置控制台账号'
+$web_password = Read-Host -AsSecureString '请设置控制台密码'
+
+$port = Read-Host '请输入端口（范围8000到49151，直接回车默认使用9900）'
 if (!$port) {
-  $port = Get-Random -Minimum 8000 -Maximum 49151
+  $port = 9900
 }
 $innerport = Get-Random -Minimum 8000 -Maximum 49151
 
-Write-Output '是否部署 caddy 网络服务器（如果你打算部署其他网络服务器如 nginx 等，建议选否）：'
+
+Write-Output '是否使用自签名 https？'
+Write-Output '（https 可以很好地保护安全）'
+Write-Output '（自签名证书不被浏览器信任，需要手动点击信任）'
 $userinput = Read-Host '请输入 y 或 n (y/n)'
 Switch ($userinput) {
-  Y { $use_caddy = $true }
-  N { $use_caddy = $false }
-  Default { $use_caddy = $false }
+  Y { $use_https = $true }
+  N { $use_https = $false }
+  Default { $use_https = $false }
 }
-
-Write-Output '是否使用域名？'
-Write-Output '（如果服务器在国内，则必须是备案域名）'
-Write-Output '（请提前将域名指向此服务器）'
-$domain = Read-Host '请输入域名（不使用则直接回车）：'
 
 # 创建运行目录
 New-Item -Path .\qqbot -ItemType Directory
@@ -69,20 +70,10 @@ Expand-ZIPFile go-cqhttp-v0.9.29-fix2-windows-amd64.zip -Destination .\gocqhttp\
 Remove-Item go-cqhttp-v0.9.29-fix2-windows-amd64.zip
 
 
-Invoke-WebRequest https://github.com/yuudi/gypsum/releases/download/v0.6.0/gypsum-0.6.0-windows-x86_64.zip -OutFile .\gypsum.zip
+Invoke-WebRequest https://github.com/yuudi/gypsum/releases/download/v1.0.0-beta.1/gypsum-1.0.0-beta.1-windows-x86_64.zip -OutFile .\gypsum.zip
 Expand-ZIPFile gypsum.zip -Destination .\gypsum\
 Remove-Item gypsum.zip
 
-if ($use_caddy) {
-  Invoke-WebRequest https://github.com/caddyserver/caddy/releases/download/v2.3.0/caddy_2.3.0_windows_amd64.zip -OutFile .\caddy_2.3.0_windows_amd64.zip
-  New-Item -ItemType Directory -Path caddy
-  Expand-ZIPFile caddy_2.3.0_windows_amd64.zip -Destination .\caddy\
-  Remove-Item caddy_2.3.0_windows_amd64.zip
-  $listen = '127.0.0.1'
-}
-else {
-  $listen = '0.0.0.0'
-}
 
 # 生成随机 access_token
 $token = -join ((65..90) + (97..122) | Get-Random -Count 16 | ForEach-Object { [char]$_ })
@@ -127,6 +118,14 @@ New-Item -Path .\gocqhttp\config.json -ItemType File -Value @"
 }
 "@
 
+if ($use_https) {
+  $schema = "https"
+}
+else {
+  $schema = "http"
+}
+
+$realwebpassword = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($web_password))
 # 写入 gypsum 配置文件
 New-Item -Path .\gypsum\gypsum_config.toml -ItemType File -Value @"
 Host = "127.0.0.1"
@@ -134,9 +133,9 @@ Port = ${innerport}
 AccessToken = "${token}"
 LogLevel = "INFO"
 [Gypsum]
-Listen = "${listen}:${port}"
-Username = "admin"
-Password = "set-your-password-here"
+Listen = "${schema}://0.0.0.0:${port}"
+Username = "${web_user}"
+Password = "${realwebpassword}"
 ExternalAssets = ""
 ResourceShare = "file"
 HttpBackRef = ""
@@ -146,40 +145,27 @@ CommandPrefix = ""
 SuperUsers = [""]
 "@
 
-if ($use_caddy) {
-  # 写入 caddy 配置文件
-  if (!$domain) {
-    $domain = ':80'
-  }
-  New-Item -Path .\caddy\Caddyfile -ItemType File -Value @"
-${domain}
-respond /ws/* "Forbidden" 403 {
-  close
-}
-reverse_proxy / http://127.0.0.1:${port} {
-  header_up X-Real-IP {remote_host}
-}
-"@
-}
 
 # 启动程序
 Start-Process -FilePath .\gypsum\gypsum.exe -WorkingDirectory .\gypsum
 Start-Process -FilePath cmd.exe -WorkingDirectory .\gocqhttp -ArgumentList "/C `"go-cqhttp & pause`""
-if ($use_caddy) {
-  Start-Process -FilePath cmd.exe -WorkingDirectory .\caddy -ArgumentList "/C `"caddy run & pause`""
-}
 
 # 创建快捷方式
 $desktop = [Environment]::GetFolderPath("Desktop")
 
 $WshShell = New-Object -comObject WScript.Shell
-$Shortcut = $WshShell.CreateShortcut("${desktop}\go-cqhttp.lnk")
+$Shortcut = $WshShell.CreateShortcut("${desktop}\启动 go-cqhttp.lnk")
 $Shortcut.TargetPath = "${pwd}\gocqhttp\go-cqhttp.exe"
 $Shortcut.WorkingDirectory = "${pwd}\gocqhttp\"
 $Shortcut.Save()
 
 $WshShell = New-Object -comObject WScript.Shell
-$Shortcut = $WshShell.CreateShortcut("${desktop}\gypsum.lnk")
+$Shortcut = $WshShell.CreateShortcut("${desktop}\启动 gypsum.lnk")
 $Shortcut.TargetPath = "${pwd}\gypsum\gypsum.exe"
 $Shortcut.WorkingDirectory = "${pwd}\gypsum\"
+$Shortcut.Save()
+
+$WshShell = New-Object -comObject WScript.Shell
+$Shortcut = $WshShell.CreateShortcut("${desktop}\gypsum 控制台.lnk")
+$Shortcut.TargetPath = "${schema}://127.0.0.1:${port}"
 $Shortcut.Save()
