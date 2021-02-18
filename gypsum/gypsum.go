@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 
+	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	zero "github.com/wdvxdr1123/ZeroBot"
 
@@ -73,4 +74,11 @@ func (_ *gypsumPlugin) Start() { // 插件主体
 		return
 	}
 	initWeb()
+}
+
+func getGypsumVersion(c *gin.Context) {
+	c.JSON(200, gin.H{
+		"version": BuildVersion,
+		"commit":  BuildCommit,
+	})
 }

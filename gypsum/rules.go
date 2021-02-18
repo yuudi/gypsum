@@ -190,11 +190,11 @@ func (r *Rule) Register(id uint64) error {
 		log.Errorf("Unknown type %#v", r.MatcherType)
 		return errors.New(fmt.Sprintf("Unknown type %#v", r.MatcherType))
 	}
-	zeroMatcher[id] = zero.OnMessage(append(rules, msgRule)...).SetPriority(r.Priority).SetBlock(r.Block).Handle(templateRuleHandler(*tmpl))
+	zeroMatcher[id] = zero.OnMessage(append(rules, msgRule)...).SetPriority(r.Priority).SetBlock(r.Block).Handle(templateRuleHandler(*tmpl, zero.Send, log.Error))
 	return nil
 }
 
-func templateRuleHandler(tmpl pongo2.Template) zero.Handler {
+func templateRuleHandler(tmpl pongo2.Template, send func(event zero.Event, msg interface{}) int64, errLogger func(...interface{})) zero.Handler {
 	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
 		var luaState *lua.LState
 		defer func() {
@@ -236,12 +236,12 @@ func templateRuleHandler(tmpl pongo2.Template) zero.Handler {
 			"_lua":   luaState,
 		})
 		if err != nil {
-			log.Errorf("error when rendering template：%s", err)
+			errLogger("渲染模板出错：" + err.Error())
 			return zero.FinishResponse
 		}
 		reply = strings.TrimSpace(reply)
 		if reply != "" {
-			zero.Send(event, reply)
+			send(event, reply)
 		}
 		return zero.FinishResponse
 	}

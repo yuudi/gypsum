@@ -43,11 +43,12 @@ func Sender(event *zero.Event, safe bool) func(*lua.LState) int {
 		if !safe {
 			msg = cqcode.Escape(msg)
 		}
-		if event.GroupID == 0 {
-			go zero.SendPrivateMessage(event.UserID, msg)
-		} else {
-			go zero.SendGroupMessage(event.GroupID, msg)
-		}
+		go zero.Send(*event, msg)
+		//if event.GroupID == 0 {
+		//	go zero.SendPrivateMessage(event.UserID, msg)
+		//} else {
+		//	go zero.SendGroupMessage(event.GroupID, msg)
+		//}
 		return 0
 	}
 }

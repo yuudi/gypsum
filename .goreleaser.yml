@@ -48,4 +48,4 @@ dockers:
     dockerfile: scripts/add.Dockerfile
     image_templates:
       - "docker.pkg.github.com/yuudi/gypsum/gypsum:latest"
-      - "docker.pkg.github.com/yuudi/gypsum/gypsum:{{ .Tag }}"
+      - "docker.pkg.github.com/yuudi/gypsum/gypsum:{{ .Version }}"

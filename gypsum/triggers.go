@@ -95,11 +95,11 @@ func (t *Trigger) Register(id uint64) error {
 		log.Errorf("模板预处理出错：%s", err)
 		return err
 	}
-	zeroTrigger[id] = zero.OnNotice(noticeRule(t.TriggerType), groupsRule(t.GroupsID), usersRule(t.UsersID)).SetPriority(t.Priority).SetBlock(t.Block).Handle(templateTriggerHandler(*tmpl))
+	zeroTrigger[id] = zero.OnNotice(noticeRule(t.TriggerType), groupsRule(t.GroupsID), usersRule(t.UsersID)).SetPriority(t.Priority).SetBlock(t.Block).Handle(templateTriggerHandler(*tmpl, zero.Send, log.Error))
 	return nil
 }
 
-func templateTriggerHandler(tmpl pongo2.Template) zero.Handler {
+func templateTriggerHandler(tmpl pongo2.Template, send func(event zero.Event, msg interface{}) int64, errLogger func(...interface{})) zero.Handler {
 	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
 		var luaState *lua.LState
 		defer func() {
@@ -151,12 +151,12 @@ func templateTriggerHandler(tmpl pongo2.Template) zero.Handler {
 			"_lua":   luaState,
 		})
 		if err != nil {
-			log.Errorf("渲染模板出错：%s", err)
+			errLogger("渲染模板出错：" + err.Error())
 			return zero.FinishResponse
 		}
 		reply = strings.TrimSpace(reply)
 		if reply != "" {
-			zero.Send(event, reply)
+			send(event, reply)
 		}
 		return zero.FinishResponse
 	}

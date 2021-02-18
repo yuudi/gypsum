@@ -16,7 +16,7 @@ import (
 
 //go:generate gzip -rk9 web
 
-//go:embed web/assets
+//go:embed web
 var publicAssets embed.FS
 
 //go:embed web/index.html
@@ -69,8 +69,16 @@ func initWeb() {
 	api.DELETE("/resources/:rid", deleteResource)
 	api.PATCH("/resources/:rid", renameResource)
 
+	// debug
+	api.POST("/debug",userTest)
+
 	// resource backref
 	r.GET("/contents/resources/:filename", serveResource)
+
+	// admin
+	api.GET("/gypsum/version", getGypsumVersion)
+	api.GET("/gypsum/update", getUpdateStatus)
+	api.PUT("/gypsum/update", requestUpdateGypsum)
 
 	// web assets
 	var webAssets fs.FS

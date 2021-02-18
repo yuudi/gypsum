@@ -29,7 +29,7 @@ gypsym 需要配合 onebot 使用，例如：[go-cqhttp](https://go-cqhttp.org/)
 ```shell
 curl -sL https://github.com/yuudi/gypsum/raw/master/scripts/download.Dockerfile | docker build -t gypsum:latest -f - .
 docker run --rm -v ${PWD}/gypsum:/gypsum gypsum
-# 修改 gypsum/gypsum_data/gypsum_config.toml 文件后
+# 修改 gypsum/gypsum_config.toml 文件后
 docker rum -d -v ${PWD}/gypsum:/gypsum --name gypsum gypsum
 # 最好同时将 gypsum 目录挂载至 gocqhttp 容器，以便共享文件
 ```
@@ -49,7 +49,7 @@ docker rum -d -v ${PWD}/gypsum:/gypsum --name gypsum gypsum
 - [x] 前端
   - [x] 用户友好的前端
 - [x] 静态资源上传
-- [ ] 程序自动更新
+- [x] 程序自动更新
 - [x] 回复模板
   - [x] 更强大的回复模板
   - [x] 模板中使用 Lua
@@ -57,7 +57,7 @@ docker rum -d -v ${PWD}/gypsum:/gypsum --name gypsum gypsum
     - [x] Lua 访问 KV 数据库
     - [x] Lua 发起网络请求
   - [x] 模板文档
-  - [ ] 模板测试
+  - [x] 模板测试
 - [x] 分组
 - [x] 组导入导出
 

@@ -5,7 +5,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"io/fs"
 	"math/rand"
+	"os"
+	"path"
 	"regexp"
 	"strconv"
 )
@@ -94,4 +97,45 @@ var nonAsciiPattern = regexp.MustCompile("[^\\w\\-]")
 
 func ReplaceFilename(s, r string) string {
 	return nonAsciiPattern.ReplaceAllLiteralString(s, r)
+}
+
+func ExtractWebAssets(extractPath string) error {
+	s, err := os.Stat(extractPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if err = os.Mkdir(extractPath, 0644); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		if s.IsDir() {
+			// ok
+		} else {
+			return errors.New(extractPath + " is not a directory")
+		}
+	}
+	return fs.WalkDir(publicAssets, "web", func(filePath string, d fs.DirEntry, err error) error {
+		println("extracting: ", filePath)
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			err = os.Mkdir(path.Join(extractPath, filePath), 0644)
+			if err != nil {
+				return err
+			}
+		} else {
+			data, err := publicAssets.ReadFile(filePath)
+			if err != nil {
+				return err
+			}
+			err = os.WriteFile(path.Join(extractPath, filePath), data, 644)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
