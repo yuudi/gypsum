@@ -47,7 +47,10 @@ func (j *Job) ToBytes() ([]byte, error) {
 }
 
 func JobFromBytes(b []byte) (*Job, error) {
-	j := &Job{}
+	j := &Job{
+		GroupsID: []int64{},
+		UsersID:  []int64{},
+	}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
 	decoder := gob.NewDecoder(&buffer)

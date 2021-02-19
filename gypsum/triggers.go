@@ -47,7 +47,11 @@ func (t *Trigger) ToBytes() ([]byte, error) {
 }
 
 func TriggerFromByte(b []byte) (*Trigger, error) {
-	t := &Trigger{}
+	t := &Trigger{
+		GroupsID:    []int64{},
+		UsersID:     []int64{},
+		TriggerType: []string{},
+	}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
 	decoder := gob.NewDecoder(&buffer)

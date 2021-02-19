@@ -85,7 +85,11 @@ func (r *Rule) ToBytes() ([]byte, error) {
 }
 
 func RuleFromBytes(b []byte) (*Rule, error) {
-	r := &Rule{}
+	r := &Rule{
+		GroupsID: []int64{},
+		UsersID:  []int64{},
+		Patterns: []string{},
+	}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
 	decoder := gob.NewDecoder(&buffer)

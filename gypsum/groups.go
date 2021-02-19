@@ -62,7 +62,9 @@ func (g *Group) ToBytes() ([]byte, error) {
 }
 
 func GroupFromBytes(b []byte) (*Group, error) {
-	g := &Group{}
+	g := &Group{
+		Items: []Item{},
+	}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
 	decoder := gob.NewDecoder(&buffer)
