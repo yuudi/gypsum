@@ -6,9 +6,13 @@
 
 gypsum 是受到 [铃心自定义](http://myepk.club/) 的启发，基于 [ZeroBot](https://github.com/wdvxdr1123/ZeroBot) 的实现可视化控制台
 
-[预览版](https://github.com/yuudi/gypsum/releases/latest)
+
+<details>
+  <summary>（展开预览图）</summary>
 
 ![预览图](./docs/preview.png)
+
+</details>
 
 ## 用法
 
@@ -41,10 +45,10 @@ Start-Process -Wait -WindowStyle Hidden -Verb RunAs powershell.exe -Args "-execu
 ### Docker
 
 ```shell
-curl -sL https://github.com/yuudi/gypsum/raw/master/scripts/download.Dockerfile | docker build -t gypsum:latest -f - .
-docker run --rm -v ${PWD}/gypsum:/gypsum gypsum
+docker pull ghcr.io/yuudi/gypsum
+docker run --rm -v ${PWD}/gypsum:/gypsum ghcr.io/yuudi/gypsum
 # 修改 gypsum/gypsum_config.toml 文件后
-docker rum -d -v ${PWD}/gypsum:/gypsum --name gypsum gypsum
+docker rum -d -v ${PWD}/gypsum:/gypsum --name gypsum ghcr.io/yuudi/gypsum
 # 最好同时将 gypsum 目录挂载至 gocqhttp 容器，以便共享文件
 ```
 

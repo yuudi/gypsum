@@ -43,7 +43,7 @@ write_safe("[CQ:at,qq=" .. event.user_id .. "] 你好")
 
 与收发消息相关的模块
 
-#### send
+#### bot.send
 
 立刻发送一条消息，此方法默认会对 CQ 码进行转义。
 
@@ -63,7 +63,7 @@ write("处理完毕")
 {% endlua %}
 ```
 
-#### send_private
+#### bot.send_private
 
 向指定用户发送一条私聊消息，此方法默认会对 CQ 码进行转义。
 
@@ -80,13 +80,13 @@ bot.send_private(event.user_id, "您的暗骰点数为：" .. math.random(1, 6))
 暗骰已完成，请查看私聊
 ```
 
-#### send_group
+#### bot.send_group
 
 向指定群发送一条消息，此方法默认会对 CQ 码进行转义。
 
 同上，略。
 
-#### get
+#### bot.get
 
 获取下一个消息
 
@@ -114,7 +114,7 @@ end
 {% endlua %}
 ```
 
-#### approve
+#### bot.approve
 
 同意一个事件
 
@@ -134,7 +134,7 @@ end
 {% endlua %}
 ```
 
-#### withdraw
+#### bot.withdraw
 
 撤回消息
 
@@ -156,7 +156,7 @@ end
 {% endlua %}
 ```
 
-#### set_title
+#### bot.set_title
 
 设置群头衔
 
@@ -175,7 +175,7 @@ bot.set_title("大佬")
 你太厉害了，送给你“大佬”头衔
 ```
 
-#### group_ban
+#### bot.group_ban
 
 群内禁言
 
@@ -194,7 +194,7 @@ bot.group_ban(60*5)
 违反群规！禁言5分钟警告！
 ```
 
-#### api
+#### bot.api
 
 调用 bot api，具体方法可参照 [onebot 标准](https://github.com/howmanybots/onebot/tree/master/v11/specs/api)
 
@@ -224,13 +224,13 @@ bot.api("send_private_msg", args)
 
 将数据存储在 gypsum 的模块
 
-#### put
+#### database.put
 
 参数：第一个参数为数字或字符串，表示键值。第二个参数为数据，数据的类型只能是：数字、字符串、bool、nil、table 之一。
 
 返回：成功时没有返回值，失败时返回值为错误信息。
 
-#### get
+#### database.get
 
 参数：第一个参数为数字或字符串，表示键值。第二个参数为任意类型的数据，表示未命中时的默认值，可省略。
 
@@ -258,7 +258,7 @@ end
 
 进行 json 编码解码的模块，来自 [gopher-json](https://layeh.com/gopher-json)
 
-#### decode
+#### json.decode
 
 解析 json
 
@@ -266,7 +266,7 @@ end
 
 返回：成功时返回解析结果，失败时返回 nil 与错误信息
 
-#### encode
+#### json.encode
 
 编码为 json
 
@@ -294,7 +294,7 @@ print(new_json)
 
 进行 http 请求的模块，来自 [gluahttp](https://github.com/cjoudrey/gluahttp)
 
-#### request
+#### http.request
 
 参数：第一个参数为字符串，表示请求方法。第二个参数字符串，表示请求地址。第三个参数为 table，表示选项。
 
@@ -387,19 +387,3 @@ write_safe("[CQ:image,file=" .. data.data[1].url .. "]")
 #### os.time
 
 获取 unix 时间戳（秒级）
-
-#### 读写文件
-
-示例：
-
-```lua
-{% lua %}
-file1 = io.open("my_file.txt", "r")
-content = file1.read("a")  -- 读取整个文件
-file1.close()
-
-file2 = io.open("new_file.txt", "w")
-file2.write(content)
-file2.close()
-{% endlua %}
-```
