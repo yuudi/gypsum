@@ -62,15 +62,15 @@ func (_ *gypsumPlugin) GetPluginInfo() zero.PluginInfo { // 返回插件信息
 
 func (_ *gypsumPlugin) Start() { // 插件主体
 	if err := initTemplating(); err != nil {
-		log.Errorf("pongo2引擎初始化错误：%s", err)
+		log.Fatalf("pongo2引擎初始化错误：%s", err)
 		return
 	}
 	if err := initDb(); err != nil {
-		log.Errorf("数据库初始化错误：%s", err)
+		log.Fatalf("数据库初始化错误：%s", err)
 		return
 	}
 	if err := loadData(); err != nil {
-		log.Errorf("数据库加载错误：%s", err)
+		log.Fatalf("数据库加载错误：%s", err)
 		return
 	}
 	initWeb()

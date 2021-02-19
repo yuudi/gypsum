@@ -3,8 +3,6 @@ package luatag
 import (
 	"time"
 
-	log "github.com/sirupsen/logrus"
-	zero "github.com/wdvxdr1123/ZeroBot"
 	lua "github.com/yuin/gopher-lua"
 
 	"github.com/yuudi/gypsum/gypsum/helper/cqcode"
@@ -27,28 +25,6 @@ func Writer(w interface{ WriteString(string) (int, error) }, safe bool) func(*lu
 		}
 		//// write end of line
 		//_, _ = w.WriteString("\n")
-		return 0
-	}
-}
-
-func Sender(event *zero.Event, safe bool) func(*lua.LState) int {
-	if event == nil {
-		log.Warn("cannot send without event")
-		return func(_ *lua.LState) int {
-			return 0
-		}
-	}
-	return func(L *lua.LState) int {
-		msg := L.ToString(1)
-		if !safe {
-			msg = cqcode.Escape(msg)
-		}
-		go zero.Send(*event, msg)
-		//if event.GroupID == 0 {
-		//	go zero.SendPrivateMessage(event.UserID, msg)
-		//} else {
-		//	go zero.SendGroupMessage(event.GroupID, msg)
-		//}
 		return 0
 	}
 }

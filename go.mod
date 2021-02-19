@@ -27,8 +27,8 @@ require (
 	github.com/ugorji/go v1.2.4 // indirect
 	github.com/wdvxdr1123/ZeroBot v0.0.0-20210217082314-a694002ac2bd
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
-	golang.org/x/crypto v0.0.0-20201221181555-eec23a3978ad // indirect
-	golang.org/x/sys v0.0.0-20210217105451-b926d437f341 // indirect
+	golang.org/x/crypto v0.0.0-20210218145215-b8e89b74b9df // indirect
+	golang.org/x/sys v0.0.0-20210218155724-8ebf48af031b // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	layeh.com/gopher-json v0.0.0-20201124131017-552bb3c4c3bf

@@ -12,6 +12,7 @@ import (
 	log "github.com/sirupsen/logrus"
 
 	gzipStatic "github.com/yuudi/gypsum/gypsum/helper/gin_middleware_gzip_static"
+	"github.com/yuudi/gypsum/gypsum/helper/selfsign"
 )
 
 //go:generate gzip -rk9 web
@@ -70,7 +71,7 @@ func initWeb() {
 	api.PATCH("/resources/:rid", renameResource)
 
 	// debug
-	api.POST("/debug",userTest)
+	api.POST("/debug", userTest)
 
 	// resource backref
 	r.GET("/contents/resources/:filename", serveResource)
@@ -123,7 +124,7 @@ func serveWeb(r *gin.Engine, listen string) {
 			log.Fatalf("binding address error: %s", err)
 		}
 	} else if strings.HasPrefix(listen, "https://") {
-		pub, priv, err := getTlsKeys()
+		pub, priv, err := selfsign.GetTlsKeys()
 		if err != nil {
 			log.Fatalf("get tls key error: %s", err)
 		}

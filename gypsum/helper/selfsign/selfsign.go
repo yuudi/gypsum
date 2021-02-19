@@ -1,6 +1,6 @@
 // https://golang.org/src/crypto/tls/generate_cert.go
 
-package gypsum
+package selfsign
 
 import (
 	"crypto/ecdsa"
@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func getTlsKeys() (publicKeyPath, privateKeyPath string, err error) {
+func GetTlsKeys() (publicKeyPath, privateKeyPath string, err error) {
 	publicKeyPath = "./gypsum.pem"
 	privateKeyPath = "./gypsum.key"
 	_, e := os.Stat(publicKeyPath)

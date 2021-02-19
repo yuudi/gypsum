@@ -13,6 +13,7 @@ import (
 	"github.com/tidwall/gjson"
 	zero "github.com/wdvxdr1123/ZeroBot"
 	zeroMessage "github.com/wdvxdr1123/ZeroBot/message"
+	lua "github.com/yuin/gopher-lua"
 )
 
 type testCase struct {
@@ -97,12 +98,36 @@ func (t *testCase) TestNotice() (string, error) {
 	return receiver.String(), nil
 }
 
+func (t *testCase) TestTemplate() (string, error) {
+	tmpl, err := pongo2.FromString(t.Response)
+	if err != nil {
+		return "", errors.New("模板预处理出错：" + err.Error())
+	}
+	var luaState *lua.LState
+	defer func() {
+		if luaState != nil {
+			luaState.Close()
+		}
+	}()
+	msg, err := tmpl.Execute(pongo2.Context{
+		"_lua": luaState,
+	})
+	if err != nil {
+		return "", errors.New("渲染模板出错：" + err.Error())
+	}
+	msg = strings.TrimSpace(msg)
+	return msg, nil
+}
+
 func (t *testCase) RunTest() (string, bool, error) {
 	switch t.DebugType {
 	case "message":
 		return t.TestMessage()
 	case "notice":
 		r, e := t.TestNotice()
+		return r, true, e
+	case "schedule":
+		r, e := t.TestTemplate()
 		return r, true, e
 	default:
 		err := errors.New("unknown debug_type: " + t.DebugType)

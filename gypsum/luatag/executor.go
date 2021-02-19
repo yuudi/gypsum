@@ -26,9 +26,16 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 	L := ctx.Public["_lua"].(*lua.LState)
 	if L == nil {
 		L = lua.NewState()
+		var metaEvent *zero.Event
+		metaEventInterface, ok := ctx.Public["_event"]
+		if ok {
+			metaEvent = metaEventInterface.(*zero.Event)
+		} else {
+			metaEvent = nil
+		}
 		// the close function are called by executor caller
 
-		L.PreloadModule("bot", botModLoader)
+		L.PreloadModule("bot", botModLoaderFunc(metaEvent))
 		L.PreloadModule("database", dbLoader)
 		L.PreloadModule("json", luaJson.Loader)
 		L.PreloadModule("http", gluahttp.NewHttpModule(&http.Client{}).Loader)
@@ -65,17 +72,8 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 				}
 			}
 		}
-		var metaEvent *zero.Event
-		metaEventInterface, ok := ctx.Public["_event"]
-		if ok {
-			metaEvent = metaEventInterface.(*zero.Event)
-		} else {
-			metaEvent = nil
-		}
 		L.SetGlobal("write", L.NewFunction(Writer(writer, false)))
 		L.SetGlobal("write_safe", L.NewFunction(Writer(writer, true)))
-		L.SetGlobal("send", L.NewFunction(Sender(metaEvent, false)))
-		L.SetGlobal("send_safe", L.NewFunction(Sender(metaEvent, true)))
 		L.SetGlobal("sleep", L.NewFunction(luaSleep))
 		L.SetGlobal("event", luaEvent)
 		L.SetGlobal("state", luaState)
@@ -90,7 +88,7 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 
 func TagLuaParser(doc *pongo2.Parser, start *pongo2.Token, arguments *pongo2.Parser) (pongo2.INodeTag, *pongo2.Error) {
 	luaNode := &tagLuaNode{}
-	wrapper, _, err := doc.WrapUntilTag("endlua")
+	wrapper, _, err := doc.WrapUntilTag("endlua", "end_lua")
 	if err != nil {
 		return nil, err
 	}

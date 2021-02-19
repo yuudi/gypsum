@@ -17,6 +17,8 @@ import (
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb/util"
+
+	"github.com/yuudi/gypsum/gypsum/helper"
 )
 
 type Item struct {
@@ -60,11 +62,7 @@ func (g *Group) ToBytes() ([]byte, error) {
 }
 
 func GroupFromBytes(b []byte) (*Group, error) {
-	g := &Group{
-		DisplayName: "",
-		Items:       []Item{},
-		ParentGroup: 0,
-	}
+	g := &Group{}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
 	decoder := gob.NewDecoder(&buffer)
@@ -162,7 +160,7 @@ func loadGroups() {
 	}()
 	rootGroupInitialized := false
 	for iter.Next() {
-		key := ToUint(iter.Key()[14:])
+		key := helper.ToUint(iter.Key()[14:])
 		value := iter.Value()
 		g, e := GroupFromBytes(value)
 		if e != nil {
@@ -192,7 +190,7 @@ func (g *Group) SaveToDB(gid uint64) error {
 	if err != nil {
 		return err
 	}
-	return db.Put(append([]byte("gypsum-groups-"), U64ToBytes(gid)...), v, nil)
+	return db.Put(append([]byte("gypsum-groups-"), helper.U64ToBytes(gid)...), v, nil)
 }
 
 func findItem(itemType ItemType, itemID uint64) (item UserRecord, ok bool) {
@@ -345,7 +343,7 @@ func createGroup(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3031,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -517,7 +515,7 @@ func exportGroup(c *gin.Context) {
 	}
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Transfer-Encoding", "binary")
-	c.Header("Content-Disposition", "attachment; filename="+ReplaceFilename(pluginName, "_")+".zip")
+	c.Header("Content-Disposition", "attachment; filename="+helper.ReplaceFilename(pluginName, "_")+".zip")
 	c.Header("Content-Type", "application/octet-stream")
 	_, err = c.Writer.Write(buf.Bytes())
 	if err != nil {
@@ -662,7 +660,7 @@ func importGroup(c *gin.Context) {
 		DisplayName: newGroup.DisplayName,
 		ItemID:      cursor,
 	})
-	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -757,7 +755,7 @@ func deleteGroup(c *gin.Context) {
 	}
 	// remove self from database
 	delete(groups, groupID)
-	if err := db.Delete(append([]byte("gypsum-groups-"), U64ToBytes(groupID)...), nil); err != nil {
+	if err := db.Delete(append([]byte("gypsum-groups-"), helper.U64ToBytes(groupID)...), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3001,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

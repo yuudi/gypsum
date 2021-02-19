@@ -14,6 +14,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
 	lua "github.com/yuin/gopher-lua"
+
+	"github.com/yuudi/gypsum/gypsum/helper"
 )
 
 type TriggerCategory int
@@ -45,17 +47,7 @@ func (t *Trigger) ToBytes() ([]byte, error) {
 }
 
 func TriggerFromByte(b []byte) (*Trigger, error) {
-	t := &Trigger{
-		DisplayName: "",
-		Active:      true,
-		GroupsID:    []int64{},
-		UsersID:     []int64{},
-		TriggerType: []string{},
-		Response:    "",
-		Priority:    50,
-		Block:       true,
-		ParentGroup: 0,
-	}
+	t := &Trigger{}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
 	decoder := gob.NewDecoder(&buffer)
@@ -135,12 +127,24 @@ func templateTriggerHandler(tmpl pongo2.Template, send func(event zero.Event, ms
 					zero.SetGroupAddRequest(event.Flag, event.SubType, true, "")
 				}
 			},
+			"set_title": func(title string, qqid ...int64) {
+				if event.GroupID == 0 {
+					log.Warnf("cannot set title in event %s/%s", event.PostType, event.SubType)
+				}
+				if len(qqid) == 0 {
+					zero.SetGroupSpecialTitle(event.GroupID, event.UserID, title)
+				} else {
+					for _, user := range qqid {
+						zero.SetGroupSpecialTitle(event.GroupID, user, title)
+					}
+				}
+			},
 			"group_ban": func(duration interface{}) {
 				if event.GroupID == 0 {
 					log.Warnf("cannot ban sender in event %s/%s", event.PostType, event.SubType)
 					return
 				}
-				d, err := AnyToInt64(duration)
+				d, err := helper.AnyToInt64(duration)
 				if err != nil {
 					log.Warnf("cannot convert %#v to int64", duration)
 					return
@@ -173,7 +177,7 @@ func loadTriggers() {
 		}
 	}()
 	for iter.Next() {
-		key := ToUint(iter.Key()[16:])
+		key := helper.ToUint(iter.Key()[16:])
 		value := iter.Value()
 		t, e := TriggerFromByte(value)
 		if e != nil {
@@ -201,16 +205,16 @@ func (t *Trigger) SaveToDB(idx uint64) error {
 	if err != nil {
 		return err
 	}
-	return db.Put(append([]byte("gypsum-triggers-"), U64ToBytes(idx)...), v, nil)
+	return db.Put(append([]byte("gypsum-triggers-"), helper.U64ToBytes(idx)...), v, nil)
 }
 
 func (t *Trigger) NewParent(selfID, parentID uint64) error {
+	t.ParentGroup = parentID
 	v, err := t.ToBytes()
 	if err != nil {
 		return err
 	}
-	t.ParentGroup = parentID
-	err = db.Put(append([]byte("gypsum-triggers-"), U64ToBytes(selfID)...), v, nil)
+	err = db.Put(append([]byte("gypsum-triggers-"), helper.U64ToBytes(selfID)...), v, nil)
 	return err
 }
 
@@ -304,7 +308,7 @@ func createTrigger(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -326,7 +330,7 @@ func createTrigger(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put(append([]byte("gypsum-triggers-"), U64ToBytes(cursor)...), v, nil); err != nil {
+	if err := db.Put(append([]byte("gypsum-triggers-"), helper.U64ToBytes(cursor)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -368,7 +372,7 @@ func deleteTrigger(c *gin.Context) {
 
 	// remove self from database
 	delete(triggers, triggerID)
-	if err := db.Delete(append([]byte("gypsum-triggers-"), U64ToBytes(triggerID)...), nil); err != nil {
+	if err := db.Delete(append([]byte("gypsum-triggers-"), helper.U64ToBytes(triggerID)...), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3001,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

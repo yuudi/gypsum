@@ -6,7 +6,9 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb"
 
+	"github.com/yuudi/gypsum/gypsum/helper"
 	"github.com/yuudi/gypsum/gypsum/luatag"
+	"github.com/yuudi/gypsum/gypsum/template"
 )
 
 var db *leveldb.DB
@@ -26,7 +28,7 @@ func initDb() error {
 			return err
 		}
 	} else {
-		itemCursor = ToUint(data)
+		itemCursor = helper.ToUint(data)
 	}
 	coldSalt, err = db.Get([]byte("gypsum-$meta-coldsalt"), nil)
 	if err != nil {
@@ -41,6 +43,7 @@ func initDb() error {
 		}
 	}
 	luatag.SetDB(db)
+	template.SetDB(db)
 	return nil
 }
 

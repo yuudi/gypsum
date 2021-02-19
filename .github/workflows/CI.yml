@@ -75,12 +75,20 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Build binaries
+      - name: Quick build
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
-        uses: goreleaser/goreleaser-action@v2
-        with:
-          version: latest
-          args: release --snapshot --skip-publish --rm-dist
+        run: |
+          export GOOS=linux
+          export GOARCH=amd64
+          go build -tags=jsoniter -o "dist/gypsum" .
+
+          export GOOS=windows
+          export GOARCH=amd64
+          go build -tags=jsoniter -o "dist/gypsum.exe" .
+
+          cd dist
+          tar zcf gypsum-test-${GITHUB_SHA:0:7}-linux-x86_64.tar.gz gypsum
+          zip gypsum-test-${GITHUB_SHA:0:7}-windows-x86_64.zip gypsum.exe
 
       - name: Login to ghcr.io
         if: startsWith(github.ref, 'refs/tags/v')

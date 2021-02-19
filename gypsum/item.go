@@ -5,6 +5,8 @@ import (
 	"errors"
 
 	log "github.com/sirupsen/logrus"
+
+	"github.com/yuudi/gypsum/gypsum/helper"
 )
 
 type ItemType string
@@ -43,7 +45,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte, newParentID uint
 		rule.ParentGroup = newParentID
 		itemCursor++
 		cursor := itemCursor
-		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+		if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 			return 0, err
 		}
 		rules[cursor] = rule
@@ -59,7 +61,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte, newParentID uint
 		trigger.ParentGroup = newParentID
 		itemCursor++
 		cursor := itemCursor
-		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+		if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 			return 0, err
 		}
 		triggers[cursor] = trigger
@@ -75,7 +77,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte, newParentID uint
 		job.ParentGroup = newParentID
 		itemCursor++
 		cursor := itemCursor
-		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+		if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 			return 0, err
 		}
 		jobs[cursor] = job
@@ -91,7 +93,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte, newParentID uint
 		resource.ParentGroup = newParentID
 		itemCursor++
 		cursor := itemCursor
-		if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+		if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 			return 0, err
 		}
 		resources[cursor] = resource

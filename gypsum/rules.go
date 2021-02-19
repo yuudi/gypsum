@@ -16,6 +16,8 @@ import (
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
 	lua "github.com/yuin/gopher-lua"
+
+	"github.com/yuudi/gypsum/gypsum/helper"
 )
 
 type RuleType int
@@ -83,20 +85,7 @@ func (r *Rule) ToBytes() ([]byte, error) {
 }
 
 func RuleFromBytes(b []byte) (*Rule, error) {
-	r := &Rule{
-		DisplayName: "",
-		Active:      true,
-		MessageType: AllMessage,
-		GroupsID:    []int64{},
-		UsersID:     []int64{},
-		MatcherType: FullMatch,
-		Patterns:    []string{},
-		OnlyAtMe:    false,
-		Response:    "",
-		Priority:    50,
-		Block:       true,
-		ParentGroup: 0,
-	}
+	r := &Rule{}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
 	decoder := gob.NewDecoder(&buffer)
@@ -220,17 +209,41 @@ func templateRuleHandler(tmpl pongo2.Template, send func(event zero.Event, msg i
 				}
 				return fmt.Sprintf("[CQ:at,qq=%d]", event.UserID)
 			},
-			"group_ban": func(duration interface{}) {
+			"withdraw": func() {
+				if event.MessageType != "group" {
+					log.Warnf("cannot withdraw: message is not a group message: %#v", event)
+				}
+				zero.DeleteMessage(event.MessageID)
+			},
+			"set_title": func(title string, qqid ...int64) {
+				if event.MessageType != "group" {
+					log.Warnf("cannot set title: message is not a group message: %#v", event)
+				}
+				if len(qqid) == 0 {
+					zero.SetGroupSpecialTitle(event.GroupID, event.UserID, title)
+				} else {
+					for _, user := range qqid {
+						zero.SetGroupSpecialTitle(event.GroupID, user, title)
+					}
+				}
+			},
+			"group_ban": func(duration interface{}, qqid ...int64) {
 				if event.GroupID == 0 {
 					log.Warnf("cannot ban sender in event %s/%s", event.PostType, event.SubType)
 					return
 				}
-				d, err := AnyToInt64(duration)
+				d, err := helper.AnyToInt64(duration)
 				if err != nil {
 					log.Warnf("cannot convert %#v to int64", duration)
 					return
 				}
-				zero.SetGroupBan(event.GroupID, event.UserID, d)
+				if len(qqid) == 0 {
+					zero.SetGroupBan(event.GroupID, event.UserID, d)
+				} else {
+					for _, user := range qqid {
+						zero.SetGroupBan(event.GroupID, user, d)
+					}
+				}
 			},
 			"_event": &event,
 			"_lua":   luaState,
@@ -258,7 +271,7 @@ func loadRules() {
 		}
 	}()
 	for iter.Next() {
-		key := ToUint(iter.Key()[13:])
+		key := helper.ToUint(iter.Key()[13:])
 		value := iter.Value()
 		r, e := RuleFromBytes(value)
 		if e != nil {
@@ -278,7 +291,7 @@ func (r *Rule) SaveToDB(idx uint64) error {
 	if err != nil {
 		return err
 	}
-	return db.Put(append([]byte("gypsum-rules-"), U64ToBytes(idx)...), v, nil)
+	return db.Put(append([]byte("gypsum-rules-"), helper.U64ToBytes(idx)...), v, nil)
 }
 
 func checkRegex(pattern string) error {
@@ -305,7 +318,7 @@ func (r *Rule) NewParent(selfID, parentID uint64) error {
 		return err
 	}
 	r.ParentGroup = parentID
-	err = db.Put(append([]byte("gypsum-rules-"), U64ToBytes(selfID)...), v, nil)
+	err = db.Put(append([]byte("gypsum-rules-"), helper.U64ToBytes(selfID)...), v, nil)
 	return err
 }
 
@@ -407,7 +420,7 @@ func createRule(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -429,7 +442,7 @@ func createRule(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put(append([]byte("gypsum-rules-"), U64ToBytes(cursor)...), v, nil); err != nil {
+	if err := db.Put(append([]byte("gypsum-rules-"), helper.U64ToBytes(cursor)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -469,7 +482,7 @@ func deleteRule(c *gin.Context) {
 	}
 	// remove self from database
 	delete(rules, ruleID)
-	if err := db.Delete(append([]byte("gypsum-rules-"), U64ToBytes(ruleID)...), nil); err != nil {
+	if err := db.Delete(append([]byte("gypsum-rules-"), helper.U64ToBytes(ruleID)...), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3001,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

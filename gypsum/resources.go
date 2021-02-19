@@ -16,6 +16,8 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
+
+	"github.com/yuudi/gypsum/gypsum/helper"
 )
 
 type Resource struct {
@@ -38,12 +40,7 @@ func (r *Resource) ToBytes() ([]byte, error) {
 }
 
 func ResourceFromBytes(b []byte) (*Resource, error) {
-	r := &Resource{
-		FileName:    "",
-		Ext:         "",
-		Sha256Sum:   "",
-		ParentGroup: 0,
-	}
+	r := &Resource{}
 	buffer := bytes.Buffer{}
 	buffer.Write(b)
 	decoder := gob.NewDecoder(&buffer)
@@ -79,7 +76,7 @@ func loadResources() {
 		}
 	}()
 	for iter.Next() {
-		key := ToUint(iter.Key()[17:])
+		key := helper.ToUint(iter.Key()[17:])
 		value := iter.Value()
 		r, e := ResourceFromBytes(value)
 		if e != nil {
@@ -95,7 +92,7 @@ func (r *Resource) SaveToDB(idx uint64) error {
 	if err != nil {
 		return err
 	}
-	return db.Put(append([]byte("gypsum-resources-"), U64ToBytes(idx)...), v, nil)
+	return db.Put(append([]byte("gypsum-resources-"), helper.U64ToBytes(idx)...), v, nil)
 }
 
 func resourcePath(filename string) string {
@@ -153,12 +150,12 @@ func (r *Resource) GetDisplayName() string {
 }
 
 func (r *Resource) NewParent(selfID, parentID uint64) error {
+	r.ParentGroup = parentID
 	v, err := r.ToBytes()
 	if err != nil {
 		return err
 	}
-	r.ParentGroup = parentID
-	err = db.Put(append([]byte("gypsum-resources-"), U64ToBytes(selfID)...), v, nil)
+	err = db.Put(append([]byte("gypsum-resources-"), helper.U64ToBytes(selfID)...), v, nil)
 	return err
 }
 
@@ -177,7 +174,7 @@ func resourceIDByHash(sum string) (uint64, bool) {
 		}
 		return 0, false
 	}
-	return ToUint(v), true
+	return helper.ToUint(v), true
 }
 
 func getResources(c *gin.Context) {
@@ -284,7 +281,7 @@ func uploadResource(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"code":        1,
 			"message":     "already exist",
-			"resource_id": ToUint(idx),
+			"resource_id": helper.ToUint(idx),
 		})
 		return
 	} else {
@@ -321,7 +318,7 @@ func uploadResource(c *gin.Context) {
 		})
 		return
 	}
-	if err := db.Put([]byte("gypsum-$meta-cursor"), U64ToBytes(cursor), nil); err != nil {
+	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -342,14 +339,14 @@ func uploadResource(c *gin.Context) {
 		})
 		return
 	}
-	if err = db.Put(append([]byte("gypsum-resources-"), U64ToBytes(cursor)...), v, nil); err != nil {
+	if err = db.Put(append([]byte("gypsum-resources-"), helper.U64ToBytes(cursor)...), v, nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
 		})
 		return
 	}
-	if err = db.Put(append([]byte("gypsum-resources_hash-"), hashBytes[:]...), U64ToBytes(cursor), nil); err != nil {
+	if err = db.Put(append([]byte("gypsum-resources_hash-"), hashBytes[:]...), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
@@ -388,7 +385,7 @@ func deleteResource(c *gin.Context) {
 	}
 	// remove self from database
 	delete(resources, resourceID)
-	if err := db.Delete(append([]byte("gypsum-resources-"), U64ToBytes(resourceID)...), nil); err != nil {
+	if err := db.Delete(append([]byte("gypsum-resources-"), helper.U64ToBytes(resourceID)...), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3001,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
