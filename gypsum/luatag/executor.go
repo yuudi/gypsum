@@ -33,7 +33,6 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 		} else {
 			metaEvent = nil
 		}
-		// the close function are called by executor caller
 
 		L.PreloadModule("bot", botModLoaderFunc(metaEvent))
 		L.PreloadModule("database", dbLoader)
@@ -75,10 +74,19 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 		L.SetGlobal("write", L.NewFunction(Writer(writer, false)))
 		L.SetGlobal("write_safe", L.NewFunction(Writer(writer, true)))
 		L.SetGlobal("sleep", L.NewFunction(luaSleep))
+		L.SetGlobal("res", L.NewFunction(resFunc))
 		L.SetGlobal("event", luaEvent)
 		L.SetGlobal("state", luaState)
 		ctx.Public["_lua"] = L
 	}
+	//select {
+	//case <- time.After(30*time.Second):
+	//	L.Close()
+	//	return ctx.Error("lua execution timeout",nil)
+	//}
+	//backgroundContext, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	//defer cancel()
+	//L.SetContext(backgroundContext)
 	if err := L.DoString(s); err != nil {
 		log.Errorf("lua execution error: %s", err)
 		return nil
@@ -94,4 +102,15 @@ func TagLuaParser(doc *pongo2.Parser, start *pongo2.Token, arguments *pongo2.Par
 	}
 	luaNode.wrapper = wrapper
 	return luaNode, nil
+}
+
+var resFunc lua.LGFunction
+
+func SetResFunc(fn func(string) string) {
+	resFunc = func(L *lua.LState) int {
+		res := L.ToString(1)
+		uri := fn(res)
+		L.Push(lua.LString(uri))
+		return 1
+	}
 }

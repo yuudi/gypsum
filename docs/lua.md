@@ -37,6 +37,37 @@ write_safe("[CQ:at,qq=" .. event.user_id .. "] 你好")
 {% endlua %}
 ```
 
+### sleep
+
+等待一段时间
+
+参数：时间，秒
+
+用法示例：
+
+```lua
+{% lua %}
+sleep(10)
+write("时间到！")
+{% endlua %}
+```
+
+### res
+
+获取资源的 URI，详见[资源管理](./resources.md)
+
+参数：字符串，表示资源的名称
+
+返回：资源的 URI
+
+用法示例：
+
+```lua
+{% lua %}
+write(image(res("123456789abcdef.jpg")))
+{% endlua %}
+```
+
 ## 模块
 
 ### bot

@@ -1,10 +1,13 @@
 package gypsum
 
 import (
+	"crypto/rand"
+	"crypto/sha256"
+	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 	zero "github.com/wdvxdr1123/ZeroBot"
 
@@ -12,33 +15,43 @@ import (
 )
 
 type ConfigType struct {
-	Listen         string
-	Username       string
-	Password       string
-	ExternalAssets string
-	ResourceShare  string
-	HttpBackRef    string
+	Listen            string
+	Password          string
+	PasswordSalt      string
+	ExternalAssets    string
+	ResourceShare     string
+	HttpBackRef       string
 }
 
-func (c ConfigType) checkValid() error {
+func (c *ConfigType) CheckValid() (changed bool, err error) {
 	switch c.ResourceShare {
 	case "file": // doing nothing
 	case "http":
-		strings.TrimSuffix(c.HttpBackRef, "/")
+		if strings.HasSuffix(c.HttpBackRef, "/") {
+			c.HttpBackRef = c.HttpBackRef[:len(c.HttpBackRef)-1]
+			changed = true
+		}
 	default:
-		return errors.New("unknown ResourceShare: " + c.ResourceShare)
+		return false, errors.New("unknown ResourceShare: " + c.ResourceShare)
 	}
-	return nil
+	if len(c.Password) == 0 {
+		return false, errors.New("未设置密码")
+	}
+	if len(c.PasswordSalt) == 0 {
+		salt := make([]byte, 12)
+		if _, err = rand.Read(salt); err != nil {
+			return
+		}
+		c.PasswordSalt = base64.StdEncoding.EncodeToString(salt)
+		// although `salt` is bytes, we do not use it, but the string
+		passwordEncrypted := sha256.Sum256([]byte(c.Password + c.PasswordSalt))
+		c.Password = hex.EncodeToString(passwordEncrypted[:])
+		changed = true
+	}
+	return
 }
 
-var Config = ConfigType{
-	Listen:         "0.0.0.0:9900",
-	Username:       "admin",
-	Password:       "admin",
-	ExternalAssets: "",
-	ResourceShare:  "",
-	HttpBackRef:    "",
-}
+var Config *ConfigType
 
 var (
 	BuildVersion = "0.0.0-unknown"
@@ -74,11 +87,4 @@ func (_ *gypsumPlugin) Start() { // 插件主体
 		return
 	}
 	initWeb()
-}
-
-func getGypsumVersion(c *gin.Context) {
-	c.JSON(200, gin.H{
-		"version": BuildVersion,
-		"commit":  BuildCommit,
-	})
 }

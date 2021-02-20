@@ -107,17 +107,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload artifact
-        if: ${{ github.event_name != 'pull_request' }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: executable
-          path: |
-            dist/*.tar.gz
-            dist/*.zip
-
       - name: Backup binaries
+        id: backup
         uses: docker://rclone/rclone:1
+        continue-on-error: true
         with:
           args: >-
             copy dist remote:pan/gypsum/ci/${{ github.run_number }}/
@@ -126,3 +119,12 @@ jobs:
             --include "/*.zip"
         env:
           RCLONE_CONFIG_PASS: ${{ secrets.RCLONE_CONFIG_PASS }}
+
+      - name: Upload artifact
+        if: steps.backup.outcome == 'failure'
+        uses: actions/upload-artifact@v2
+        with:
+          name: executable
+          path: |
+            dist/*.tar.gz
+            dist/*.zip

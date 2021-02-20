@@ -1,17 +1,18 @@
 # gypsum 配置文件
 # 正向 ws 服务端主机
-Host = "127.0.0.1"
+Host = "{{ .Host }}"
 
 # 正向 ws 服务端端口
-Port = 6700
+Port = {{ .Port }}
 
 # 正向 ws 令牌码
-AccessToken = ""
+AccessToken = "{{ .AccessToken }}"
 
 # 日志级别
-LogLevel = "INFO"
 # LogLevel = "DEBUG"
+# LogLevel = "INFO"
 # LogLevel = "WARNING"
+LogLevel = "{{ .LogLevel }}"
 
 [Gypsum]
 
@@ -30,37 +31,40 @@ LogLevel = "INFO"
 #
 # 可以指定使用 http over unix socket 监听方式，配合反向代理使用效率更高
 # Listen = "unix://run/gypsum.sock"
-Listen = "http://0.0.0.0:9900"
+Listen = "{{ .Gypsum.Listen }}"
 
-# 控制台账号
-Username = "admin"
+# 控制台密码，首次运行后会被加密
+Password = "{{ .Gypsum.Password }}"
 
-# 控制台密码
-Password = "set-your-password-here"
+# 密码盐，生成后请勿修改
+# 留空时表示密码未加密，有内容时表示密码已加密
+# 如需修改 Password 的值，请同时删除这里的值
+PasswordSalt = "{{ .Gypsum.PasswordSalt }}"
 
 # 外部的静态文件目录，留空则用内部文件
 # 静态文件目录需要包含 index.html 文件与 assets/ 目录，且每个文件都要使用 gzip 进行预压缩，否则网页无法访问
-ExternalAssets = ""
+ExternalAssets = "{{ .Gypsum.ExternalAssets }}"
 
 # 文件传输方法
 # 如果你的 gypsum 与 onebot 在同一个机器上，则使用 "file"
 # 如果 gypsum 与 onebot 在不同的机器上，则使用 "http"
+# ResourceShare = "file"
 # ResourceShare = "http"
-ResourceShare = "file"
+ResourceShare = "{{ .Gypsum.ResourceShare }}"
 
 # 如果文件传输方法选择 "http"，则填写 onebot 访问 gypsum 时使用的地址
 # 此方式使用与网页控制台相同的端口
 # "file" 方式可以不用填
 # HttpBackRef = "http://127.0.0.1:9900/"
-HttpBackRef = ""
+HttpBackRef = "{{ .Gypsum.HttpBackRef }}"
 
 [ZeroBot]
 # BOT 昵称，叫昵称等同于 @BOT
 # NickName = ["机器人", "笨蛋"]
-NickName = ["机器人"]
+NickName = [{{ range .ZeroBot.NickName }}"{{ . }}", {{end}}]
 
 # 命令前缀，建议留空
-CommandPrefix = ""
+CommandPrefix = "{{ .ZeroBot.CommandPrefix }}"
 
 # 主人，gypsum 用不到，可留空
-SuperUsers = [""]
+SuperUsers = [{{ range .ZeroBot.SuperUsers }}"{{ . }}", {{end}}]

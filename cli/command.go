@@ -22,9 +22,10 @@ var (
 type commandOptions struct {
 	action        string
 	updateVersion string
-	updateMirror  string
+	githubMirror  string
 	updateForced  bool
 	extractPath   string
+	interactive   bool
 }
 
 func parseCommand() commandOptions {
@@ -32,12 +33,13 @@ func parseCommand() commandOptions {
 	app := kingpin.New("gypsum", "gypsum cli")
 	app.Command("daemon", "start daemon gypsum").Default()
 	app.Command("run", "start run gypsum")
-	app.Command("init", "initial gypsum configuration file")
+	cmdInit := app.Command("init", "initial gypsum configuration file")
+	cmdInit.Flag("interactive", "interactive help to initial config file").Default("false").Short('i').BoolVar(&cmd.interactive)
 	cmdExtract := app.Command("extract-web", "extract web assets from gypsum")
 	cmdExtract.Arg("path", "path to save web assets").Default(".").StringVar(&cmd.extractPath)
 	cmdUpdate := app.Command("update", "update gypsum")
 	cmdUpdate.Arg("version", "new version to fetch").Default("stable").StringVar(&cmd.updateVersion)
-	cmdUpdate.Flag("mirror", "mirror to replace github.com for downloading").Short('m').StringVar(&cmd.updateMirror)
+	cmdUpdate.Flag("mirror", "mirror to replace github.com for downloading").Short('m').StringVar(&cmd.githubMirror)
 	cmdUpdate.Flag("force", "forced update").Short('f').Default("false").BoolVar(&cmd.updateForced)
 	app.Version(fmt.Sprintf("gypsum %s, commit %s", version, commit))
 	app.VersionFlag.Short('V')
@@ -57,7 +59,7 @@ func Entry(v, c string) {
 	case "run":
 		run()
 	case "init":
-		initialConfig()
+		initialConfig(cmd.interactive)
 	case "extract-web":
 		err := gypsum.ExtractWebAssets(cmd.extractPath)
 		if err != nil {
@@ -65,7 +67,7 @@ func Entry(v, c string) {
 			os.Exit(1)
 		}
 	case "update":
-		err := gypsum.UpdateGypsum(cmd.updateVersion, cmd.updateMirror, cmd.updateForced, func(s ...interface{}) {
+		err := gypsum.UpdateGypsum(cmd.updateVersion, cmd.githubMirror, cmd.updateForced, func(s ...interface{}) {
 			fmt.Println(s...)
 		})
 		if err != nil {
@@ -82,7 +84,6 @@ func daemon() {
 	fmt.Println("gypsum daemon started")
 	for {
 		cmd := exec.Command(os.Args[0], "run")
-		cmd.Stdin = os.Stdin
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 		if err := cmd.Run(); err != nil {
@@ -126,7 +127,7 @@ func run() {
 	//log.SetOutput()
 	gypsum.BuildVersion = version
 	gypsum.BuildCommit = commit
-	gypsum.Config = conf.Gypsum
+	gypsum.Config = &conf.Gypsum
 	zero.Run(zero.Config{
 		Host:          conf.Host,
 		Port:          strconv.Itoa(conf.Port),

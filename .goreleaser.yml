@@ -40,6 +40,9 @@ changelog:
   skip: false
 checksum:
   disable: true
+release:
+  draft: true
+  prerelease: auto
 dockers:
   - goos: linux
     goarch: amd64

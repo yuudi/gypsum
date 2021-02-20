@@ -8,7 +8,21 @@ base path: `/api/v1`
 
 ## 鉴权
 
-（暂定）鉴权方式为 `Basic Auth`，详见 [MDN 文档](https://developer.mozilla.org/zh-CN/docs/Web/HTTP/Authentication)，一般来说可由浏览器自动处理
+首先获取 `password_salt`
+
+GET `/gypsum/information`
+
+返回 `version` `commit` `password_salt` `logged_in`
+
+如果 logged_in 值为 `true` 则表示登录尚未过期，无需重复登录
+
+然后将用户输入的密码与 `password_salt` 连接，取 sha256 值的 16 进制小写，作为验证密码
+
+PUT `/gypsum/login`
+
+请求体为 json，字段为 `password`，值为验证密码
+
+返回 200 `code=0` 并得到 cookie
 
 ## 组
 
@@ -380,9 +394,9 @@ POST `/debug`
 
 ### 获取版本信息
 
-GET `/gypsum/version`
+GET `/gypsum/information`
 
-返回 version 与 commit
+返回 `version` `commit` `password_salt` `logged_in`
 
 ### 更新
 

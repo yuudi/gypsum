@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -95,23 +96,30 @@ func (r *Resource) SaveToDB(idx uint64) error {
 	return db.Put(append([]byte("gypsum-resources-"), helper.U64ToBytes(idx)...), v, nil)
 }
 
-func resourcePath(filename string) string {
-	switch Config.ResourceShare {
+func resourcePathFunc(shareType string) func(string) string {
+	switch strings.ToLower(shareType) {
 	case "file":
-		return path.Join(resDir, filename)
+		return resourcePathFile
 	case "http":
-		// 这种做法会导致onebot无法缓存文件，所以放弃
-		//expire := time.Now().Unix() + 300 // expire in 5 minutes
-		//signBytes := sha256.Sum256(append(append([]byte(filename), U64ToBytes(uint64(expire))...), hotSalt...))
-		//sign := hex.EncodeToString(signBytes[:])
-		//return Config.HttpBackRef + "/contents/resources/" + filename + "?expire=" + strconv.FormatInt(expire, 10) + "&sign=" + sign
-		signBytes := sha256.Sum256(append([]byte(filename), coldSalt...))
-		sign := hex.EncodeToString(signBytes[:])
-		return Config.HttpBackRef + "/contents/resources/" + filename + "?sign=" + sign
+		return resourcePathHttp
 	default:
-		log.Errorf("unknown config ResourceShare: %s", Config.ResourceShare)
+		log.Fatalf("unknown config ResourceShare: %s", shareType)
+		return nil
+	}
+}
+
+func resourcePathFile(filename string) string {
+	p, err := filepath.Abs(path.Join(resDir, filename))
+	if err != nil {
 		return ""
 	}
+	return p
+}
+
+func resourcePathHttp(filename string) string {
+	signBytes := sha256.Sum256(append([]byte(filename), coldSalt...))
+	sign := hex.EncodeToString(signBytes[:])
+	return Config.HttpBackRef + "/contents/resources/" + filename + "?sign=" + sign
 }
 
 func serveResource(c *gin.Context) {
@@ -167,7 +175,7 @@ func resourceIDByHash(sum string) (uint64, bool) {
 	if err != nil {
 		return 0, false
 	}
-	v, err := db.Get(append([]byte("gypsum-resources_hash-"), b[:]...), nil)
+	v, err := db.Get(append([]byte("gypsum-resources_hash-"), b...), nil)
 	if err != nil {
 		if err != leveldb.ErrNotFound {
 			log.Errorf("error reading database: %s", err)

@@ -32,9 +32,7 @@ func initWeb() {
 
 	api := r.Group("/api/v1")
 	api.Use(gzipForGin.Gzip(gzipForGin.BestSpeed))
-	api.Use(gin.BasicAuth(gin.Accounts{
-		Config.Username: Config.Password,
-	}))
+	api.Use(authMiddleware)
 
 	api.GET("/groups", getGroups)
 	api.GET("/groups/:gid", getGroupByID)
@@ -77,9 +75,11 @@ func initWeb() {
 	r.GET("/contents/resources/:filename", serveResource)
 
 	// admin
-	api.GET("/gypsum/version", getGypsumVersion)
 	api.GET("/gypsum/update", getUpdateStatus)
 	api.PUT("/gypsum/update", requestUpdateGypsum)
+	// admin (non-auth)
+	r.GET("/api/v1/gypsum/information", getGypsumInformation)
+	r.PUT("/api/v1/gypsum/login",loginHandler)
 
 	// web assets
 	var webAssets fs.FS

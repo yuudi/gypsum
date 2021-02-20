@@ -61,7 +61,7 @@ func UpdateGypsum(newVersion, mirror string, forcedUpdate bool, logger func(...i
 	if !forcedUpdate && release.Get("tag_name").String()[1:] == BuildVersion {
 		return errors.New("same version, no need to update")
 	}
-	var goos, goarch, archiveExt, binaryDownloadAddress string
+	var goos, goarch, archiveExt, exeExt, binaryDownloadAddress string
 	switch runtime.GOOS {
 	case "darwin":
 		goos = "mac"
@@ -78,8 +78,10 @@ func UpdateGypsum(newVersion, mirror string, forcedUpdate bool, logger func(...i
 	}
 	if runtime.GOOS == "windows" {
 		archiveExt = ".zip"
+		exeExt = ".exe"
 	} else {
 		archiveExt = ".tar.gz"
+		exeExt = ""
 	}
 	assetNameSuffix := goos + "-" + goarch + archiveExt
 	logger(fmt.Sprintf("finding asset for %s, %s %s", newVersion, goos, goarch))
@@ -121,14 +123,12 @@ func UpdateGypsum(newVersion, mirror string, forcedUpdate bool, logger func(...i
 				if err != nil {
 					return err
 				}
-				//binaryExe = make([]byte, file.FileInfo().Size())
-				//_, err = fileReader.Read(binaryExe)
 				binaryExeReader = fileReader
 				break
 			}
 		}
 		if binaryExeReader == nil {
-			return errors.New("executable binary not found in tar.gz file")
+			return errors.New("executable binary not found in zip file")
 		}
 	} else {
 		uncompressedStream, err := gzip.NewReader(binaryDownload.Body)
@@ -145,15 +145,13 @@ func UpdateGypsum(newVersion, mirror string, forcedUpdate bool, logger func(...i
 				return err
 			}
 			if header.Name == "gypsum" {
-				//binaryExe = make([]byte, header.Size)
-				//_, err = tarReader.Read(binaryExe)
 				binaryExeReader = tarReader
 				break
 			}
 		}
 	}
 	err = update.Apply(binaryExeReader, update.Options{
-		OldSavePath: "old/gypsum-" + BuildVersion + "-" + time.Now().Format("20060102-150405"),
+		OldSavePath: "old/gypsum-" + BuildVersion + "-" + time.Now().Format("20060102-150405") + exeExt,
 	})
 	if err != nil {
 		return err

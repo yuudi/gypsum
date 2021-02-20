@@ -11,7 +11,6 @@ import (
 
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
-	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb/util"
 	zero "github.com/wdvxdr1123/ZeroBot"
@@ -195,63 +194,7 @@ func templateRuleHandler(tmpl pongo2.Template, send func(event zero.Event, msg i
 				luaState.Close()
 			}
 		}()
-		reply, err := tmpl.Execute(pongo2.Context{
-			"matcher": matcher,
-			"state":   state,
-			"event": func() interface{} {
-				e := make(map[string]interface{})
-				if err := jsoniter.UnmarshalFromString(event.RawEvent.Raw, &e); err != nil {
-					log.Errorf("error when decode event json: %s", err)
-				}
-				return e
-			},
-			"json_event": &event.RawEvent.Raw,
-			"at_sender": func() string {
-				if event.GroupID == 0 {
-					log.Warnf("cannot at sender in event %s/%s", event.PostType, event.SubType)
-					return ""
-				}
-				return fmt.Sprintf("[CQ:at,qq=%d]", event.UserID)
-			},
-			"withdraw": func() {
-				if event.MessageType != "group" {
-					log.Warnf("cannot withdraw: message is not a group message: %#v", event)
-				}
-				zero.DeleteMessage(event.MessageID)
-			},
-			"set_title": func(title string, qqid ...int64) {
-				if event.MessageType != "group" {
-					log.Warnf("cannot set title: message is not a group message: %#v", event)
-				}
-				if len(qqid) == 0 {
-					zero.SetGroupSpecialTitle(event.GroupID, event.UserID, title)
-				} else {
-					for _, user := range qqid {
-						zero.SetGroupSpecialTitle(event.GroupID, user, title)
-					}
-				}
-			},
-			"group_ban": func(duration interface{}, qqid ...int64) {
-				if event.GroupID == 0 {
-					log.Warnf("cannot ban sender in event %s/%s", event.PostType, event.SubType)
-					return
-				}
-				d, err := helper.AnyToInt64(duration)
-				if err != nil {
-					log.Warnf("cannot convert %#v to int64", duration)
-					return
-				}
-				if len(qqid) == 0 {
-					zero.SetGroupBan(event.GroupID, event.UserID, d)
-				} else {
-					for _, user := range qqid {
-						zero.SetGroupBan(event.GroupID, user, d)
-					}
-				}
-			},
-			"_event": &event,
-			"_lua":   luaState,
-		})
+		reply, err := tmpl.Execute(buildExecutionContext(matcher, event, state, luaState))
 		if err != nil {
 			errLogger("渲染模板出错：" + err.Error())
 			return zero.FinishResponse
