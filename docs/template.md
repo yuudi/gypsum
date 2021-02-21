@@ -54,12 +54,12 @@ CQ码解析后为：{{ event.message | safe }}
 在模板变量中可以使用一些由 `gypsum` 提供的函数
 
 ```jinja
-{{ at(event.user_id) | safe }}，你好
+{{ at(event.user_id) }}，你好
 ```
 
 这里 `at` 是一个函数，接受了发送者的 user_id 之后，将其包装成一个 `@发送者` 的消息节点
 
-注意这里比如使用 `safe` 过滤器，将包装后的 CQ 码 转化为实际发送的 `at`
+> `at` 函数返回的值具有 `safe` 属性，无需 `safe` 过滤器
 
 所有可用的函数可参考 [模板文档 - 函数](#模板函数)
 
@@ -217,19 +217,19 @@ value is {{ some_value }}
 
 ### at
 
-接受若干个 QQ 号，转化为 at，需要配合 `safe` 过滤器使用
+接受若干个 QQ 号，转化为 at
 
 参数：数字或字符串
 
 用法示例：
 
 ```jinja
-{{ at(2854196310) | safe }} 你好！
+{{ at(2854196310) }} 你好！
 ```
 
 ### at_sender
 
-at 发送者，需要配合 `safe` 过滤器使用
+at 发送者
 
 参数：无
 
@@ -238,7 +238,7 @@ at 发送者，需要配合 `safe` 过滤器使用
 用法示例：
 
 ```jinja
-{{ at_sender | safe }} 你好！
+{{ at_sender }} 你好！
 ```
 
 ### approve
@@ -306,18 +306,18 @@ at 发送者，需要配合 `safe` 过滤器使用
 
 ### image
 
-接受一个图片文件地址或网址，转化为图片发送，需要配合 `safe` 过滤器使用
+接受一个图片文件地址或网址，转化为图片发送
 
 参数：第一个参数为 uri 字符串。第二个参数为整数表示是否缓存，默认值 1
 
 用法示例：
 
 ```jinja
-{{ image("https://home.baidu.com/Public/img/logo.png") | safe }} 请使用百度
+{{ image("https://home.baidu.com/Public/img/logo.png") }} 请使用百度
 ```
 
 ```jinja
-{{ image("https://moebi.org/pic.php", 0) | safe }} 这是随机图片
+{{ image("https://moebi.org/pic.php", 0) }} 这是随机图片
 ```
 
 ### record
@@ -334,7 +334,7 @@ at 发送者，需要配合 `safe` 过滤器使用
 用法示例：
 
 ```jinja
-{{ image(res("0123456789abcdef.jpg")) | safe }}
+{{ image(res("0123456789abcdef.jpg")) }}
 ```
 
 ### sleep
@@ -406,7 +406,7 @@ https://baidu.com/s?wd={{ url_encode(state.args) }}
 用法示例：
 
 ```jinja
-{{ image(random_file("/home/me/setu/")) | safe }}
+{{ image(random_file("/home/me/setu/")) }}
 ```
 
 ### parse_json

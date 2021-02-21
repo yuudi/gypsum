@@ -1,4 +1,4 @@
-# this file should be saved as "UTF-8 with BOM"
+﻿# this file should be saved as "UTF-8 with BOM"
 $ErrorActionPreference = "Stop"
 
 function Expand-ZIPFile($file, $destination) {

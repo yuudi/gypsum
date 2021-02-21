@@ -2,7 +2,9 @@ package luatag
 
 import (
 	"bytes"
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/cjoudrey/gluahttp"
 	"github.com/flosch/pongo2"
@@ -79,14 +81,9 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 		L.SetGlobal("state", luaState)
 		ctx.Public["_lua"] = L
 	}
-	//select {
-	//case <- time.After(30*time.Second):
-	//	L.Close()
-	//	return ctx.Error("lua execution timeout",nil)
-	//}
-	//backgroundContext, cancel := context.WithTimeout(context.Background(), 300*time.Second)
-	//defer cancel()
-	//L.SetContext(backgroundContext)
+	timeoutContext, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+	L.SetContext(timeoutContext)
 	if err := L.DoString(s); err != nil {
 		log.Errorf("lua execution error: %s", err)
 		return nil

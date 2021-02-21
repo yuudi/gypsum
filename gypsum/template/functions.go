@@ -10,18 +10,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flosch/pongo2"
 	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 
 	"github.com/yuudi/gypsum/gypsum/helper"
 )
 
-func At(qq ...interface{}) string {
+func At(qq ...interface{}) *pongo2.Value {
 	ats := make([]string, len(qq))
 	for i, qqID := range qq {
 		ats[i] = atqq(qqID)
 	}
-	return strings.Join(ats, "")
+	return pongo2.AsSafeValue(strings.Join(ats, ""))
 }
 
 func atqq(qq interface{}) string {
@@ -34,7 +35,7 @@ func atqq(qq interface{}) string {
 	}
 }
 
-func Image(src string, args ...int) string {
+func Image(src string, args ...int) *pongo2.Value {
 	// onenot can handle it well :)
 	var cache int
 	switch len(args) {
@@ -46,10 +47,10 @@ func Image(src string, args ...int) string {
 		log.Warn("function image: too many arguments")
 		cache = args[0]
 	}
-	return fmt.Sprintf("[CQ:image,cache=%d,file=%s] ", cache, src)
+	return pongo2.AsSafeValue(fmt.Sprintf("[CQ:image,cache=%d,file=%s] ", cache, src))
 }
 
-func Record(src string, args ...int) string {
+func Record(src string, args ...int) *pongo2.Value {
 	// same as image :)
 	var cache int
 	switch len(args) {
@@ -61,7 +62,7 @@ func Record(src string, args ...int) string {
 		log.Warn("function image: too many arguments")
 		cache = args[0]
 	}
-	return fmt.Sprintf("[CQ:record,cache=%d,file=%s] ", cache, src)
+	return pongo2.AsSafeValue(fmt.Sprintf("[CQ:record,cache=%d,file=%s] ", cache, src))
 }
 
 func Sleep(duration interface{}) string {

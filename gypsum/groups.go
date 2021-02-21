@@ -517,7 +517,7 @@ func exportGroup(c *gin.Context) {
 	}
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Transfer-Encoding", "binary")
-	c.Header("Content-Disposition", "attachment; filename="+helper.ReplaceFilename(pluginName, "_")+".zip")
+	c.Header("Content-Disposition", "attachment; filename="+helper.ReplaceFilename(pluginName, "_")+".gypsum")
 	c.Header("Content-Type", "application/octet-stream")
 	_, err = c.Writer.Write(buf.Bytes())
 	if err != nil {
@@ -679,9 +679,10 @@ func importGroup(c *gin.Context) {
 		return
 	}
 	c.JSON(201, gin.H{
-		"code":     0,
-		"message":  "ok",
-		"group_id": cursor,
+		"code":         0,
+		"message":      "ok",
+		"group_id":     cursor,
+		"display_name": newGroup.DisplayName,
 	})
 }
 

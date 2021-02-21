@@ -165,6 +165,31 @@ func getNextMessage(event *zero.Event) lua.LGFunction {
 			timeout = 30
 		}
 		timeoutDuration := time.Duration(float64(timeout) * float64(time.Second))
+
+		filterFunc := L.ToFunction(4)
+		if filterFunc != nil {
+			cp := lua.P{
+				Fn:      filterFunc,
+				NRet:    1,
+				Protect: true, // return error instead of panic
+				Handler: nil,
+			}
+			userDefinedRule := func(event *zero.Event, state zero.State) bool {
+				luaEvent, err := luaJson.Decode(L, []byte(event.RawEvent.Raw))
+				if err != nil {
+					panic(err)
+				}
+				err = L.CallByParam(cp, luaEvent)
+				if err != nil {
+					log.Error("lua filter function execution error: " + err.Error())
+					return false
+				}
+				defer L.Pop(1)
+				return L.ToBool(-1)
+			}
+			rules = append(rules, userDefinedRule)
+		}
+
 		message := make(chan string)
 		tempMather := zero.Matcher{
 			Temp:     true,

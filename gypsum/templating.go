@@ -93,12 +93,12 @@ func buildExecutionContext(matcher *zero.Matcher, event zero.Event, state zero.S
 			return e
 		},
 		"json_event": &event.RawEvent.Raw,
-		"at_sender": func() string {
+		"at_sender": func() *pongo2.Value {
 			if event.GroupID == 0 {
 				log.Warnf("cannot at sender in event %s/%s", event.PostType, event.SubType)
-				return ""
+				return pongo2.AsValue(nil)
 			}
-			return fmt.Sprintf("[CQ:at,qq=%d]", event.UserID)
+			return pongo2.AsSafeValue(fmt.Sprintf("[CQ:at,qq=%d]", event.UserID))
 		},
 		"approve": func() {
 			if event.PostType != "request" {
