@@ -15,12 +15,12 @@ import (
 )
 
 type ConfigType struct {
-	Listen            string
-	Password          string
-	PasswordSalt      string
-	ExternalAssets    string
-	ResourceShare     string
-	HttpBackRef       string
+	Listen         string
+	Password       string
+	PasswordSalt   string
+	ExternalAssets string
+	ResourceShare  string
+	HttpBackRef    string
 }
 
 func (c *ConfigType) CheckValid() (changed bool, err error) {

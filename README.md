@@ -84,5 +84,6 @@ docker rum -d -v ${PWD}/gypsum:/gypsum --name gypsum ghcr.io/yuudi/gypsum
 ### 1.1+
 
 - [ ] 更强大的前端编辑器
+- [ ] 网页控制台适配移动端
 - [ ] 内置频率控制器
 - [ ] 内置积分系统

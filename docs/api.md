@@ -12,7 +12,7 @@ base path: `/api/v1`
 
 GET `/gypsum/information`
 
-返回 `version` `commit` `password_salt` `logged_in`
+返回 `password_salt` `logged_in`
 
 如果 logged_in 值为 `true` 则表示登录尚未过期，无需重复登录
 
@@ -396,7 +396,7 @@ POST `/debug`
 
 GET `/gypsum/information`
 
-返回 `version` `commit` `password_salt` `logged_in`
+返回 `version` `commit` `password_salt` `logged_in` `platform`
 
 ### 更新
 

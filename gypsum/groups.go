@@ -722,18 +722,13 @@ func deleteGroup(c *gin.Context) {
 		})
 		return
 	}
-	var newGroup *Group
-	if movePatch.MoveTo != 0 {
-		newGroup, ok = groups[movePatch.MoveTo]
-		if !ok {
-			c.JSON(404, gin.H{
-				"code":    1000,
-				"message": "no such group",
-			})
-			return
-		}
-	} else {
-		newGroup = nil
+	newGroup, ok := groups[movePatch.MoveTo]
+	if !ok {
+		c.JSON(404, gin.H{
+			"code":    1000,
+			"message": "no such group",
+		})
+		return
 	}
 	// remove self from parent
 	if err := DeleteFromParent(group.ParentGroup, groupID); err != nil {
@@ -752,9 +747,7 @@ func deleteGroup(c *gin.Context) {
 			continue
 		}
 	}
-	if newGroup != nil {
-		newGroup.Items = append(newGroup.Items, group.Items...)
-	}
+	newGroup.Items = append(newGroup.Items, group.Items...)
 	// remove self from database
 	delete(groups, groupID)
 	if err := db.Delete(append([]byte("gypsum-groups-"), helper.U64ToBytes(groupID)...), nil); err != nil {

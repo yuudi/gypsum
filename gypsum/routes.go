@@ -2,9 +2,9 @@ package gypsum
 
 import (
 	"embed"
-	"io/fs"
-	"net/http"
-	"os"
+	"encoding/base64"
+	"math/rand"
+	"path"
 	"strings"
 
 	gzipForGin "github.com/gin-contrib/gzip"
@@ -32,6 +32,8 @@ func initWeb() {
 
 	api := r.Group("/api/v1")
 	api.Use(gzipForGin.Gzip(gzipForGin.BestSpeed))
+
+	initialLoginAuth()
 	api.Use(authMiddleware)
 
 	api.GET("/groups", getGroups)
@@ -71,43 +73,44 @@ func initWeb() {
 	// debug
 	api.POST("/debug", userTest)
 
-	// resource backref
-	r.GET("/contents/resources/:filename", serveResource)
-
 	// admin
 	api.GET("/gypsum/update", getUpdateStatus)
 	api.PUT("/gypsum/update", requestUpdateGypsum)
 	// admin (non-auth)
 	r.GET("/api/v1/gypsum/information", getGypsumInformation)
-	r.PUT("/api/v1/gypsum/login",loginHandler)
+	r.PUT("/api/v1/gypsum/login", loginHandler)
 
-	// web assets
-	var webAssets fs.FS
-	if len(Config.ExternalAssets) == 0 {
+	// resource backref
+	r.GET("/contents/resources/:filename", serveResource)
+
+	if Config.ExternalAssets == "" {
 		// internal assets
-		var err error
-		webAssets, err = fs.Sub(publicAssets, "web/assets")
-		if err != nil {
-			log.Fatal("directory `web` not compiled")
+		tagByte := make([]byte, 12)
+		rand.Read(tagByte)
+		r.GET("/assets/*filepath", gzipStatic.ServeEmbedGzipStatic(publicAssets, "/web/assets", base64.URLEncoding.EncodeToString(tagByte)))
+
+		// home page
+		homePage := func(c *gin.Context) {
+			if gzipStatic.ShouldCompress(c.Request) {
+				c.Header("Vary", "Accept-Encoding")
+				c.Header("Content-Encoding", "gzip")
+				c.Data(200, "text/html; charset=utf-8", publicIndexGz)
+			} else {
+				c.Data(200, "text/html", publicIndex)
+			}
 		}
+		r.GET("/index.html", homePage)
+		r.GET("/", homePage)
 	} else {
 		// external assets
-		webAssets = os.DirFS(Config.ExternalAssets)
-	}
-	r.GET("/assets/*filepath", gzipStatic.ServeGzipStatic(http.FS(webAssets)))
-
-	// home page
-	homePage := func(c *gin.Context) {
-		if gzipStatic.ShouldCompress(c.Request) {
-			c.Header("Vary", "Accept-Encoding")
-			c.Header("Content-Encoding", "gzip")
-			c.Data(200, "text/html; charset=utf-8", publicIndexGz)
-		} else {
-			c.Data(200, "text/html", publicIndex)
+		r.Static("/assets/", path.Join(Config.ExternalAssets, "assets"))
+		homePage := func(c *gin.Context) {
+			c.File(path.Join(Config.ExternalAssets, "index.html"))
 		}
+		r.GET("/index.html", homePage)
+		r.GET("/", homePage)
 	}
-	r.GET("/index.html", homePage)
-	r.GET("/", homePage)
+
 	//// wildcard for history router
 	//r.NoRoute(homePage)
 	r.NoRoute(func(c *gin.Context) {

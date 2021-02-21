@@ -52,3 +52,4 @@ dockers:
     image_templates:
       - "ghcr.io/yuudi/gypsum:latest"
       - "ghcr.io/yuudi/gypsum:{{ .Version }}"
+      - "ghcr.io/yuudi/gypsum:{{ .Major }}"

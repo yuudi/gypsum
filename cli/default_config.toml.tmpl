@@ -6,7 +6,7 @@ Host = "{{ .Host }}"
 Port = {{ .Port }}
 
 # 正向 ws 令牌码
-AccessToken = "{{ .AccessToken }}"
+AccessToken = "{{ js .AccessToken }}"
 
 # 日志级别
 # LogLevel = "DEBUG"
@@ -42,8 +42,12 @@ Password = "{{ .Gypsum.Password }}"
 PasswordSalt = "{{ .Gypsum.PasswordSalt }}"
 
 # 外部的静态文件目录，留空则用内部文件
-# 静态文件目录需要包含 index.html 文件与 assets/ 目录，且每个文件都要使用 gzip 进行预压缩，否则网页无法访问
-ExternalAssets = "{{ .Gypsum.ExternalAssets }}"
+# 静态文件目录需要包含 index.html 文件与 assets/ 目录
+# 注意双引号字符串中反斜杠会转义，如需保持请使用单引号
+# ExternalAssets = ""
+# ExternalAssets = "/home/gypsum/web"
+# ExternalAssets = 'C:\Users\Administrator\Desktop\gypsum\web'
+ExternalAssets = "{{ js .Gypsum.ExternalAssets }}"
 
 # 文件传输方法
 # 如果你的 gypsum 与 onebot 在同一个机器上，则使用 "file"
@@ -64,7 +68,7 @@ HttpBackRef = "{{ .Gypsum.HttpBackRef }}"
 NickName = [{{ range .ZeroBot.NickName }}"{{ . }}", {{end}}]
 
 # 命令前缀，建议留空
-CommandPrefix = "{{ .ZeroBot.CommandPrefix }}"
+CommandPrefix = "{{ js .ZeroBot.CommandPrefix }}"
 
 # 主人，gypsum 用不到，可留空
 SuperUsers = [{{ range .ZeroBot.SuperUsers }}"{{ . }}", {{end}}]
