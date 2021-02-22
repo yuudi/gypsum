@@ -125,7 +125,6 @@ func GroupFromArchiveReader(reader io.Reader, newGroupID uint64) (*Group, error)
 	}
 	decoder := gob.NewDecoder(reader)
 	if err := decoder.Decode(ga); err != nil {
-		log.Debug("02011755")
 		return nil, err
 	}
 	g := &Group{

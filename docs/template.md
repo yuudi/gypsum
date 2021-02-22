@@ -3,8 +3,10 @@
 目录：
 
 [简介](#简介)  
+[Django 标准库](#Django-标准库)  
 [模板变量](#模板变量)  
 [模板函数](#模板函数)  
+[模板过滤器](#模板过滤器)  
 [模板标签](#模板标签)
 
 ## 简介
@@ -166,12 +168,26 @@ value is {{ some_value }}
 {% endcomment %}
 ```
 
+## Django 标准库
+
+Django 标准库中包含了大量实用的标签与过滤器，可以参照[Django 文档](https://docs.djangoproject.com/zh-hans/3.1/ref/templates/builtins/)使用。
+
 ## 模板变量
 
 ### event
 
 `event` 是收到的事件对象，具体结构可参照按照 [onebot 标准](https://github.com/howmanybots/onebot/blob/master/v11/specs/event)  
 只有事件触发的模板才能使用 `event`，定时任务中的模板是没有 `event` 对象的。
+
+一些常用的变量：
+
+| 变量                  | 事件类型           | 含义                   |
+| --------------------- | ------------------ | ---------------------- |
+| event.message         | 消息               | 接收到的消息           |
+| event.user_id         | 消息、部分通知     | 事件的触发者           |
+| event.group_id        | 群消息、群通知     | 事件的触发群，可能为空 |
+| event.sender.nickname | 消息               | 消息发送者的昵称       |
+| event.comment         | 加好友加群请求邀请 | 验证消息               |
 
 ### state
 
@@ -207,11 +223,9 @@ value is {{ some_value }}
 示例：
 
 用正则表达式 `(\d+)d(\d+)` 匹配消息 `1d6` 时  
-`state.regex_matched[0]` 为 `1d6`  
-`state.regex_matched[1]` 为 `1`  
-`state.regex_matched[2]` 为 `6`
-
-> 注意：在 lua 中 state.regex_matched 的序号是从 1 开始的
+`state.regex_matched.0` 为 `1d6`  
+`state.regex_matched.1` 为 `1`  
+`state.regex_matched.2` 为 `6`
 
 ## 模板函数
 
@@ -350,21 +364,6 @@ at 发送者
 时间到！
 ```
 
-### url_encode
-
-将字符串进行 url 编码
-
-参数：字符串
-
-返回：字符串
-
-用法示例：
-
-```jinja
-为您找到的结果：
-https://baidu.com/s?wd={{ url_encode(state.args) }}
-```
-
 ### file_get_contents
 
 读取文件内容
@@ -460,6 +459,74 @@ https://baidu.com/s?wd={{ url_encode(state.args) }}
 这是您今天的次数：{{ times }}
 {{ db_put("usage", times) }}
 {% endif %}
+```
+
+## 模板过滤器
+
+### urlencode
+
+将字符串进行 url 编码
+
+用法示例：
+
+```jinja
+为您找到的结果：
+https://baidu.com/s?wd={{ state.args | urlencode }}
+```
+
+### parse
+
+将字符串进行 CQ 码解码
+
+用法示例：
+
+```jinja
+您发送的 CQ 码转化后的结果是：
+{{ state.args | parse }}
+```
+
+### escape
+
+将字符串进行 CQ 码转义，会将 CQ 码作为字符串发送
+
+用法示例：
+
+```jinja
+这里的 CQ 码只是字符串
+{{ "[CQ:at,qq=all]" | escape }}
+```
+
+因为这个过滤器是默认会使用的，即使不使用 escape 过滤器，gypsum 也会进行 CQ 码转义
+
+示例：
+
+```jinja
+这里的 CQ 码也只是字符串
+{{ "[CQ:at,qq=all]" }}
+```
+
+<details>
+  <summary>高级：关于安全内容（点击展开）</summary>
+
+在模板中，每一个常量和变量都有一个“安全”属性，
+如果一个值没有“安全”属性，那么这个值被渲染到模板时，会被 escape 转义。
+gypsum 提供的一些函数中（如 `at`、`image` 等），会对返回值增加“安全”属性，这些值发送时不会被 escape 转义。
+`parse` `escape` 过滤器返回值具有“安全”属性，所以不会被第二次转义。
+如果希望对一个值添加“安全”属性，请使用 `safe` 过滤器，详见下文。
+
+参考资料：[django 中的自动转义](https://docs.djangoproject.com/zh-hans/3.1/howto/custom-template-tags/#filters-and-auto-escaping)，[jinja 中的自动转义](http://docs.jinkan.org/docs/jinja2/templates.html#id17)
+
+</details>
+
+### safe
+
+将值标记为安全，以便发送 CQ 码
+
+用法示例：
+
+```jinja
+这里的 CQ 码会 at 全体成员
+{{ "[CQ:at,qq=all]" | safe }}
 ```
 
 ## 模板标签

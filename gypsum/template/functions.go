@@ -1,6 +1,7 @@
 package template
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -75,24 +76,34 @@ func Sleep(duration interface{}) string {
 	return ""
 }
 
-func RandomInt(input ...int) int {
+func RandomInt(input ...interface{}) (int, error) {
 	var min, max int
+	var err error
 	switch len(input) {
 	case 0:
 		min = 0
 		max = 99
 	case 1:
 		min = 0
-		max = input[0]
+		max, err = helper.AnyToInt(input[0])
+		if err != nil {
+			return 0, err
+		}
 	case 2:
-		min = input[0]
-		max = input[1]
+		min, err = helper.AnyToInt(input[0])
+		max, err = helper.AnyToInt(input[1])
+		if err != nil {
+			return 0, err
+		}
 	default:
 		log.Warn("too many argument for random")
-		min = input[0]
-		max = input[1]
+		min, err = helper.AnyToInt(input[0])
+		max, err = helper.AnyToInt(input[1])
+		if err != nil {
+			return 0, err
+		}
 	}
-	return rand.Intn(max) + min
+	return rand.Intn(max) + min, nil
 }
 
 func FileGetContents(filename string) string {
@@ -145,4 +156,19 @@ func RandomFile(dirPath string) string {
 	}
 	choice := rand.Intn(len(dir))
 	return path.Join(dirPath, dir[choice].Name())
+}
+
+func Sequence(input interface{}) ([]int, error) {
+	length, err := helper.AnyToInt(input)
+	if err != nil {
+		return nil, err
+	}
+	if length < 0 {
+		return nil, errors.New("length is negative")
+	}
+	s := make([]int, length)
+	for i := range s {
+		s[i] = i
+	}
+	return s, nil
 }

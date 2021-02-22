@@ -38,7 +38,6 @@ if (Test-Path .\qqbot) {
 $qqid = Read-Host '请输入作为机器人的QQ号：'
 $qqpassword = Read-Host -AsSecureString '请输入作为机器人的QQ密码'
 
-$web_user = Read-Host '请设置控制台账号'
 $web_password = Read-Host -AsSecureString '请设置控制台密码'
 
 $port = Read-Host '请输入端口（范围8000到49151，直接回车默认使用9900）'
@@ -51,6 +50,7 @@ $innerport = Get-Random -Minimum 8000 -Maximum 49151
 Write-Output '是否使用自签名 https？'
 Write-Output '（https 可以很好地保护安全）'
 Write-Output '（自签名证书不被浏览器信任，需要手动点击信任）'
+Write-Output '（如果在非 443 端口启用 https，则必须在浏览器中手动输入 https。建议使用浏览器书签保存）'
 $userinput = Read-Host '请输入 y 或 n (y/n)'
 Switch ($userinput) {
   Y { $use_https = $true }
@@ -70,7 +70,7 @@ Expand-ZIPFile go-cqhttp-v0.9.29-fix2-windows-amd64.zip -Destination .\gocqhttp\
 Remove-Item go-cqhttp-v0.9.29-fix2-windows-amd64.zip
 
 
-Invoke-WebRequest https://github.com/yuudi/gypsum/releases/download/v1.0.0-beta.1/gypsum-1.0.0-beta.1-windows-x86_64.zip -OutFile .\gypsum.zip
+Invoke-WebRequest https://github.com/yuudi/gypsum/releases/download/v1.0.0/gypsum-1.0.0-windows-x86_64.zip -OutFile .\gypsum.zip
 Expand-ZIPFile gypsum.zip -Destination .\gypsum\
 Remove-Item gypsum.zip
 
@@ -134,15 +134,14 @@ AccessToken = "${token}"
 LogLevel = "INFO"
 [Gypsum]
 Listen = "${schema}://0.0.0.0:${port}"
-Username = "${web_user}"
 Password = "${realwebpassword}"
 ExternalAssets = ""
 ResourceShare = "file"
 HttpBackRef = ""
 [ZeroBot]
-NickName = ["机器人"]
+NickName = []
 CommandPrefix = ""
-SuperUsers = [""]
+SuperUsers = []
 "@
 
 

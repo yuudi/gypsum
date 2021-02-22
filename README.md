@@ -1,11 +1,10 @@
 # gypsum
 
-石膏自定义
+冰石自定义
 
 交流 QQ 群：238627697
 
 gypsum 是受到 [铃心自定义](http://myepk.club/) 的启发，基于 [ZeroBot](https://github.com/wdvxdr1123/ZeroBot) 的实现可视化控制台
-
 
 <details>
   <summary>（展开预览图）</summary>

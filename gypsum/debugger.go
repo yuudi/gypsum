@@ -9,7 +9,6 @@ import (
 	"github.com/flosch/pongo2"
 	"github.com/gin-gonic/gin"
 	jsoniter "github.com/json-iterator/go"
-	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 	zero "github.com/wdvxdr1123/ZeroBot"
 	zeroMessage "github.com/wdvxdr1123/ZeroBot/message"
@@ -69,7 +68,6 @@ func (t *testCase) TestMessage() (string, bool, error) {
 	}
 	event.Message = zeroMessage.ParseMessageFromString(t.Event.Get("message").String())
 	event.RawEvent = t.Event
-	log.Debug(event.Message.CQString())
 	matched := zeroRule(&event, state)
 	if !matched {
 		return "", false, nil

@@ -47,6 +47,35 @@ func AnyToFloat(unk interface{}) (float64, error) {
 	}
 }
 
+func AnyToInt(unk interface{}) (int, error) {
+	switch i := unk.(type) {
+	case int64:
+		return int(i), nil
+	case int32:
+		return int(i), nil
+	case float64:
+		return int(i), nil
+	case float32:
+		return int(i), nil
+	case int16:
+		return int(i), nil
+	case int:
+		return int(i), nil
+	case uint64:
+		return int(i), nil
+	case uint32:
+		return int(i), nil
+	case uint16:
+		return int(i), nil
+	case uint:
+		return int(i), nil
+	case string:
+		return strconv.Atoi(i)
+	default:
+		return 0, errors.New(fmt.Sprintf("error: cannot accept %#v as int", unk))
+	}
+}
+
 func AnyToInt64(unk interface{}) (int64, error) {
 	switch i := unk.(type) {
 	case int64:

@@ -3,6 +3,7 @@ package luatag
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -85,8 +86,7 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 	defer cancel()
 	L.SetContext(timeoutContext)
 	if err := L.DoString(s); err != nil {
-		log.Errorf("lua execution error: %s", err)
-		return nil
+		return ctx.Error(fmt.Sprintf("lua execution error: %s", err), nil)
 	}
 	return nil
 }

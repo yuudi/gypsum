@@ -25,6 +25,9 @@ func initTemplating() error {
 	// enable auto-escape
 	pongo2.SetAutoescape(true)
 
+	if err := pongo2.RegisterFilter("parse", filterParseCQCode); err != nil {
+		return err
+	}
 	if err := pongo2.RegisterFilter("silence", filterSilence); err != nil {
 		return err
 	}
@@ -35,6 +38,7 @@ func initTemplating() error {
 	pongo2.Globals["image"] = template.Image
 	pongo2.Globals["record"] = template.Record
 	pongo2.Globals["sleep"] = template.Sleep
+	pongo2.Globals["range"] = template.Sequence
 	pongo2.Globals["url_encode"] = url.QueryEscape
 	pongo2.Globals["random_int"] = template.RandomInt
 	pongo2.Globals["random_line"] = template.RandomLine
@@ -74,7 +78,11 @@ func initTemplating() error {
 }
 
 func filterEscapeCQCode(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
-	return pongo2.AsValue(cqcode.Escape(in.String())), nil
+	return pongo2.AsSafeValue(cqcode.Escape(in.String())), nil
+}
+
+func filterParseCQCode(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
+	return pongo2.AsSafeValue(cqcode.Parse(in.String())), nil
 }
 
 func filterSilence(_ *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {

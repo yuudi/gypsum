@@ -66,6 +66,11 @@ func sendToEvent(event *zero.Event) lua.LGFunction {
 			return 2
 		}
 		msg := L.ToString(1)
+		if msg == "" {
+			L.Push(lua.LNil)
+			L.Push(lua.LString("cannot send empty message"))
+			return 2
+		}
 		safe := L.ToBool(2)
 		if !safe {
 			msg = cqcode.Escape(msg)

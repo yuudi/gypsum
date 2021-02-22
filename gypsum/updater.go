@@ -209,7 +209,6 @@ func requestUpdateGypsum(c *gin.Context) {
 		"message": "updating started",
 	})
 	go func() {
-		log.Debug(req.NewVersion, req.Mirror)
 		err := UpdateGypsum(req.NewVersion, req.Mirror, req.ForcedUpdate, log.Info)
 		if err != nil {
 			log.Error(err)

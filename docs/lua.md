@@ -7,6 +7,56 @@
 `event` 是收到的事件对象，具体结构可参照 [onebot 标准](https://github.com/howmanybots/onebot/blob/master/v11/specs/event)  
 只有事件触发的模板才能使用 `event`，定时任务中的模板是没有 `event` 对象的。
 
+一些常用的变量：
+
+| 变量                  | 事件类型           | 含义                   |
+| --------------------- | ------------------ | ---------------------- |
+| event.message         | 消息               | 接收到的消息           |
+| event.user_id         | 消息、部分通知     | 事件的触发者           |
+| event.group_id        | 群消息、群通知     | 事件的触发群，可能为空 |
+| event.sender.nickname | 消息               | 消息发送者的昵称       |
+| event.comment         | 加好友加群请求邀请 | 验证消息               |
+
+### state
+
+对于各种匹配方式，state 给出了匹配结果
+
+#### 完全匹配
+
+`state.matched` 为匹配的消息
+
+#### 关键词匹配
+
+`state.keyword` 为匹配的关键词
+
+#### 前缀匹配
+
+`state.prefix` 为匹配的前缀  
+`state.args` 为除去前缀后的剩余部分
+
+#### 后缀匹配
+
+`state.suffix` 为匹配的后缀  
+`state.args` 为除去后缀后的剩余部分
+
+#### 命令匹配
+
+`state.command` 为匹配的命令  
+`state.args` 为除去命令后的剩余部分
+
+#### 正则匹配
+
+`state.regex_matched` 为正则匹配结果数组
+
+示例：
+
+用正则表达式 `(\d+)d(\d+)` 匹配消息 `1d6` 时  
+`state.regex_matched[1]` 为 `1d6`  
+`state.regex_matched[2]` 为 `1`  
+`state.regex_matched[3]` 为 `6`
+
+> 注意：在 lua 中 state.regex_matched 的序号是从 1 开始的
+
 ## 函数
 
 ### write
@@ -83,6 +133,8 @@ write(image(res("123456789abcdef.jpg")))
 | 1        | 字符串   |        | 要发送的消息 |
 | 2        | Bool     | false  | 是否取消转义 |
 
+返回：message_id
+
 限制：仅限消息与事件（定时任务中无法使用）
 
 用法示例：
@@ -107,6 +159,8 @@ write("处理完毕")
 | 2        | 字符串   |        | 发送的消息     |
 | 3        | Bool     | false  | 是否取消转义   |
 
+返回：message_id
+
 用法示例：
 
 ```lua
@@ -122,6 +176,8 @@ bot.send_private(event.user_id, "您的暗骰点数为：" .. math.random(1, 6))
 
 向指定群发送一条消息，此方法默认会对 CQ 码进行转义。
 
+返回：message_id
+
 同上，略。
 
 #### bot.get
@@ -132,12 +188,12 @@ bot.send_private(event.user_id, "您的暗骰点数为：" .. math.random(1, 6))
 | -------- | -------------------------- | --------------- | ------------------------------------------- |
 | 1        | 数字                       | 当前用户        | 指定接收消息的用户，`0`表示任何用户         |
 | 2        | 数字                       | 当前群/当前私聊 | 指定接收消息的群，`0`表示私聊               |
-| 3        | 数字                       | 30              | 超时时间（秒）                              |
+| 3        | 数字                       | 30 秒           | 超时时间（秒）                              |
 | 4        | 函数，接收 Table 返回 Bool | 始终为 true     | 用于筛选消息的函数，接收的 Table 表示 event |
 
-返回值：成功时返回对方的消息，超时返回两个 nil。错误时第一个返回值为 nil，第二个返回值为错误信息
+返回值：成功时返回对方的消息，超时返回 nil 与 `"timeout"` 字符串。错误时第一个返回值为 nil，第二个返回值为错误信息
 
-限制：如果在定时任务中使用，则必须指定 QQ 号与群号
+限制：如果在定时任务中使用，则必须指定 QQ 号或群号，QQ 号与群号不得同时为 0
 
 用法示例：
 
@@ -146,16 +202,50 @@ bot.send_private(event.user_id, "您的暗骰点数为：" .. math.random(1, 6))
 local bot = require("bot")
 
 send("请问您需要查找哪座城市的天气？")
-reply = bot.get()
-if(reply==nil)
+reply, err = bot.get()
+if(err != nil)
 then
-    -- 返回值为 nil，表示用户没有发送消息
-    write("查询已超时")
-else
     write(reply + "的天气是晴天")
+else
+    write(err)
 end
 {% endlua %}
 ```
+
+筛选函数的用法示例：
+
+```lua
+{% lua %}
+local bot = require("bot")
+
+function is_valid_yn(ev)  -- 注意此处 ev 与全局的 event 有区别
+    if(ev.message == "y" or ev.message == "n")
+    then
+        return true
+    else
+        bot.send("y or n")  -- 验证函数中也可以发送消息
+        return false
+    end
+end
+
+bot.send("您确定吗？请回复 y 或 n")
+reply, err = bot.get(nil, nil, nil, is_valid_yn)  -- 用 nil 表示默认值，即自动获取当前的对话
+
+if(err != nil)
+then
+    if(reply == "y")
+    then
+        write("已确认")
+    else
+        write("已取消")
+    end
+end
+{% endlua %}
+```
+
+> 提示：  
+> 使用验证函数的方法会持续获取消息直到成功或超时，
+> 如果希望只获取一次，应当直接用 bot.get() 直接获取消息后再做验证
 
 #### bot.approve
 

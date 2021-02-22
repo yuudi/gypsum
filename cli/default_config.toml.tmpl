@@ -25,11 +25,14 @@ LogLevel = "{{ .LogLevel }}"
 # 可以指定使用 https 监听方式，更安全
 # 公钥私钥放在工作目录的 gypsum.pem 与 gypsum.key 文件，如果不存在则自签名
 # 如果启用 https，则控制台使用加密传输保证安全，但浏览器会提示“不信任的站点”，点击“信任此站点”即可
-# 如果启用 https，则不能再使用 http 访问
+# 如果在非 443 端口启用 https，则必须在浏览器中手动输入 https。建议使用浏览器书签保存
 # 反向代理中不建议使用 https
 # Listen = "https://0.0.0.0:9900"
 #
 # 可以指定使用 http over unix socket 监听方式，配合反向代理使用效率更高
+# 例如，使用 /run/gypsum.sock 时：
+# nginx 配置文件可填写 `proxy_pass http://unix:/run/gypsum.sock:/;`
+# caddy2 配置文件可填写 `reverse_proxy unix//run/gunicorn.sock`
 # Listen = "unix://run/gypsum.sock"
 Listen = "{{ .Gypsum.Listen }}"
 
@@ -47,7 +50,7 @@ PasswordSalt = "{{ .Gypsum.PasswordSalt }}"
 # ExternalAssets = ""
 # ExternalAssets = "/home/gypsum/web"
 # ExternalAssets = 'C:\Users\Administrator\Desktop\gypsum\web'
-ExternalAssets = "{{ js .Gypsum.ExternalAssets }}"
+ExternalAssets = '{{ .Gypsum.ExternalAssets }}'
 
 # 文件传输方法
 # 如果你的 gypsum 与 onebot 在同一个机器上，则使用 "file"
@@ -65,10 +68,10 @@ HttpBackRef = "{{ .Gypsum.HttpBackRef }}"
 [ZeroBot]
 # BOT 昵称，叫昵称等同于 @BOT
 # NickName = ["机器人", "笨蛋"]
-NickName = [{{ range .ZeroBot.NickName }}"{{ . }}", {{end}}]
+NickName = [{{ range .ZeroBot.NickName }}'{{ . }}', {{end}}]
 
 # 命令前缀，建议留空
-CommandPrefix = "{{ js .ZeroBot.CommandPrefix }}"
+CommandPrefix = '{{ .ZeroBot.CommandPrefix }}'
 
 # 主人，gypsum 用不到，可留空
 SuperUsers = [{{ range .ZeroBot.SuperUsers }}"{{ . }}", {{end}}]

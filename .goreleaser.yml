@@ -41,7 +41,6 @@ changelog:
 checksum:
   disable: true
 release:
-  draft: true
   prerelease: auto
 dockers:
   - goos: linux

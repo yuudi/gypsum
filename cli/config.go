@@ -106,6 +106,7 @@ func readConfig() (*Config, error) {
 			fmt.Println("配置文件不存在，将生成默认配置文件")
 			initialConfig(false)
 			fmt.Println("请修改配置文件后再启动。")
+			fmt.Println("提示：执行 gypsum init -i 可以帮助你生成配置文件")
 		} else {
 			fmt.Printf("无法读取配置文件：错误%s\n", err)
 		}
