@@ -67,9 +67,9 @@ type gypsumPlugin struct{}
 func (_ *gypsumPlugin) GetPluginInfo() zero.PluginInfo { // 返回插件信息
 	return zero.PluginInfo{
 		Author:     "yuudi",
-		PluginName: "石膏自定义",
+		PluginName: "冰石自定义",
 		Version:    "v" + BuildVersion,
-		Details:    "石膏自定义",
+		Details:    "冰石自定义",
 	}
 }
 

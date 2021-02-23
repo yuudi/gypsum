@@ -3,9 +3,8 @@ package luatag
 import (
 	"time"
 
+	zeroMessage "github.com/wdvxdr1123/ZeroBot/message"
 	lua "github.com/yuin/gopher-lua"
-
-	"github.com/yuudi/gypsum/gypsum/helper/cqcode"
 )
 
 func Writer(w interface{ WriteString(string) (int, error) }, safe bool) func(*lua.LState) int {
@@ -15,7 +14,7 @@ func Writer(w interface{ WriteString(string) (int, error) }, safe bool) func(*lu
 			// write all arguments
 			data := L.ToStringMeta(L.Get(i)).String()
 			if !safe {
-				data = cqcode.Escape(data)
+				data = zeroMessage.EscapeCQCodeText(data)
 			}
 			_, _ = w.WriteString(data)
 			// write space between arguments

@@ -8,10 +8,10 @@ import (
 	jsoniter "github.com/json-iterator/go"
 	log "github.com/sirupsen/logrus"
 	zero "github.com/wdvxdr1123/ZeroBot"
+	zeroMessage "github.com/wdvxdr1123/ZeroBot/message"
 	lua "github.com/yuin/gopher-lua"
 
 	"github.com/yuudi/gypsum/gypsum/helper"
-	"github.com/yuudi/gypsum/gypsum/helper/cqcode"
 	"github.com/yuudi/gypsum/gypsum/luatag"
 	"github.com/yuudi/gypsum/gypsum/template"
 )
@@ -78,11 +78,11 @@ func initTemplating() error {
 }
 
 func filterEscapeCQCode(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
-	return pongo2.AsSafeValue(cqcode.Escape(in.String())), nil
+	return pongo2.AsSafeValue(zeroMessage.EscapeCQCodeText(in.String())), nil
 }
 
 func filterParseCQCode(in *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {
-	return pongo2.AsSafeValue(cqcode.Parse(in.String())), nil
+	return pongo2.AsSafeValue(zeroMessage.UnescapeCQCodeText(in.String())), nil
 }
 
 func filterSilence(_ *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Error) {

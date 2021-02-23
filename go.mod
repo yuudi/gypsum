@@ -13,22 +13,17 @@ require (
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
-	github.com/golang/snappy v0.0.2 // indirect
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf
 	github.com/json-iterator/go v1.1.10
 	github.com/leodido/go-urn v1.2.1 // indirect
-	github.com/magefile/mage v1.11.0 // indirect
-	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.8.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tidwall/gjson v1.6.8
-	github.com/tidwall/pretty v1.0.5 // indirect
 	github.com/ugorji/go v1.2.4 // indirect
-	github.com/wdvxdr1123/ZeroBot v0.0.0-20210217082314-a694002ac2bd
+	github.com/wdvxdr1123/ZeroBot v0.0.0-20210222145945-329707c6a35a
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
-	golang.org/x/crypto v0.0.0-20210218145215-b8e89b74b9df // indirect
-	golang.org/x/sys v0.0.0-20210218155724-8ebf48af031b // indirect
+	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	layeh.com/gopher-json v0.0.0-20201124131017-552bb3c4c3bf

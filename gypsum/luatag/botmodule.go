@@ -5,10 +5,9 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	zero "github.com/wdvxdr1123/ZeroBot"
+	zeroMessage "github.com/wdvxdr1123/ZeroBot/message"
 	lua "github.com/yuin/gopher-lua"
 	luaJson "layeh.com/gopher-json"
-
-	"github.com/yuudi/gypsum/gypsum/helper/cqcode"
 )
 
 func botModLoaderFunc(event *zero.Event) lua.LGFunction {
@@ -73,7 +72,7 @@ func sendToEvent(event *zero.Event) lua.LGFunction {
 		}
 		safe := L.ToBool(2)
 		if !safe {
-			msg = cqcode.Escape(msg)
+			msg = zeroMessage.EscapeCQCodeText(msg)
 		}
 		messageID := zero.Send(*event, msg)
 		L.Push(lua.LNumber(messageID))
@@ -96,7 +95,7 @@ func sendPrivateMessage(L *lua.LState) int {
 	}
 	safe := L.ToBool(3)
 	if !safe {
-		message = cqcode.Escape(message)
+		message = zeroMessage.EscapeCQCodeText(message)
 	}
 	messageID := zero.SendPrivateMessage(userID, message)
 	L.Push(lua.LNumber(messageID))
@@ -118,7 +117,7 @@ func sendGroupMessage(L *lua.LState) int {
 	}
 	safe := L.ToBool(3)
 	if !safe {
-		message = cqcode.Escape(message)
+		message = zeroMessage.EscapeCQCodeText(message)
 	}
 	messageID := zero.SendGroupMessage(groupID, message)
 	L.Push(lua.LNumber(messageID))

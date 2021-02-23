@@ -1,4 +1,11 @@
 ﻿# this file should be saved as "UTF-8 with BOM"
+
+# 命令行参数
+param (
+  [string]$version = "1.0.0",
+  [string]$mirror = "github.com"
+)
+
 $ErrorActionPreference = "Stop"
 
 function Expand-ZIPFile($file, $destination) {
@@ -51,7 +58,7 @@ Write-Output '是否使用自签名 https？'
 Write-Output '（https 可以很好地保护安全）'
 Write-Output '（自签名证书不被浏览器信任，需要手动点击信任）'
 Write-Output '（如果在非 443 端口启用 https，则必须在浏览器中手动输入 https。建议使用浏览器书签保存）'
-$userinput = Read-Host '请输入 y 或 n (y/n)'
+$userinput = Read-Host '请输入 y 或 n (y/n，直接回车默认 n)'
 Switch ($userinput) {
   Y { $use_https = $true }
   N { $use_https = $false }
@@ -65,12 +72,12 @@ New-Item -ItemType Directory -Path .\gypsum, .\gocqhttp
 
 # 下载程序
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-Invoke-WebRequest https://github.com/Mrs4s/go-cqhttp/releases/download/v0.9.29-fix2/go-cqhttp-v0.9.29-fix2-windows-amd64.zip -OutFile .\go-cqhttp-v0.9.29-fix2-windows-amd64.zip
+Invoke-WebRequest https://${mirror}/Mrs4s/go-cqhttp/releases/download/v0.9.29-fix2/go-cqhttp-v0.9.29-fix2-windows-amd64.zip -OutFile .\go-cqhttp-v0.9.29-fix2-windows-amd64.zip
 Expand-ZIPFile go-cqhttp-v0.9.29-fix2-windows-amd64.zip -Destination .\gocqhttp\
 Remove-Item go-cqhttp-v0.9.29-fix2-windows-amd64.zip
 
-
-Invoke-WebRequest https://github.com/yuudi/gypsum/releases/download/v1.0.0/gypsum-1.0.0-windows-x86_64.zip -OutFile .\gypsum.zip
+$version = $version -replace "^v", ""
+Invoke-WebRequest https://${mirror}/yuudi/gypsum/releases/download/v${version}/gypsum-${version}-windows-x86_64.zip -OutFile .\gypsum.zip
 Expand-ZIPFile gypsum.zip -Destination .\gypsum\
 Remove-Item gypsum.zip
 
@@ -144,6 +151,17 @@ CommandPrefix = ""
 SuperUsers = []
 "@
 
+# 创建 simple-daemon
+New-Item -Path .\gypsum\gypsum-daemon.bat -ItemType File -Value @"
+@echo off
+:START
+gypsum.exe run
+if errorlevel 5 (
+   echo restart
+   goto START
+)
+"@
+
 
 # 启动程序
 Start-Process -FilePath .\gypsum\gypsum.exe -WorkingDirectory .\gypsum
@@ -160,7 +178,7 @@ $Shortcut.Save()
 
 $WshShell = New-Object -comObject WScript.Shell
 $Shortcut = $WshShell.CreateShortcut("${desktop}\启动 gypsum.lnk")
-$Shortcut.TargetPath = "${pwd}\gypsum\gypsum.exe"
+$Shortcut.TargetPath = "${pwd}\gypsum\gypsum-daemon.bat"
 $Shortcut.WorkingDirectory = "${pwd}\gypsum\"
 $Shortcut.Save()
 

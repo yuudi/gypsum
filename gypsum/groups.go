@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -430,7 +431,7 @@ func addGroupItem(c *gin.Context) {
 		DisplayName: item.GetDisplayName(),
 		ItemID:      itemID,
 	})
-	if err := group.SaveToDB(groupID); err != nil {
+	if err = group.SaveToDB(groupID); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3053,
 			"message": fmt.Sprintf("Server got itself into trouble: item does not exist in its parent group"),
@@ -516,7 +517,7 @@ func exportGroup(c *gin.Context) {
 	}
 	c.Header("Content-Description", "File Transfer")
 	c.Header("Content-Transfer-Encoding", "binary")
-	c.Header("Content-Disposition", "attachment; filename="+helper.ReplaceFilename(pluginName, "_")+".gypsum")
+	c.Header("Content-Disposition", "attachment; filename="+helper.ReplaceFilename(pluginName, "_")+".gypsum; filename*=utf-8''"+url.QueryEscape(pluginName)+".gypsum")
 	c.Header("Content-Type", "application/octet-stream")
 	_, err = c.Writer.Write(buf.Bytes())
 	if err != nil {
@@ -661,6 +662,13 @@ func importGroup(c *gin.Context) {
 		DisplayName: newGroup.DisplayName,
 		ItemID:      cursor,
 	})
+	if err = parentGroup.SaveToDB(parentID); err != nil {
+		c.JSON(500, gin.H{
+			"code":    3000,
+			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
+		})
+		return
+	}
 	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
@@ -757,6 +765,13 @@ func deleteGroup(c *gin.Context) {
 		})
 		return
 	}
+	if err = newGroup.SaveToDB(movePatch.MoveTo); err != nil {
+		c.JSON(500, gin.H{
+			"code":    3001,
+			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
+		})
+		return
+	}
 	c.JSON(200, gin.H{
 		"code":    0,
 		"message": "deleted",
@@ -787,7 +802,7 @@ func renameGroup(c *gin.Context) {
 		return
 	}
 	np := groupNamePatch{}
-	if err := c.BindJSON(&np); err != nil {
+	if err = c.BindJSON(&np); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
 			"message": fmt.Sprintf("converting error: %s", err),
@@ -795,11 +810,10 @@ func renameGroup(c *gin.Context) {
 		return
 	}
 	group.DisplayName = np.DisplayName
-	if err := ChangeNameForParent(group.ParentGroup, groupID, np.DisplayName); err != nil {
+	if err = ChangeNameForParent(group.ParentGroup, groupID, np.DisplayName); err != nil {
 		log.Errorf("error when change group %d from parent group %d: %s", groupID, group.ParentGroup, err)
 	}
-	err = group.SaveToDB(groupID)
-	if err != nil {
+	if err = group.SaveToDB(groupID); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

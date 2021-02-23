@@ -86,7 +86,7 @@ GET `/groups/{group_id}/archive`
 
 例如 `GET /api/v1/groups/{group_id}/archive?plugin_name=github.com%2Fyuudi%2Fgypsum&plugin_version=1`
 
-返回一个二进制文件（zip 压缩包）
+返回一个二进制文件（扩展名是 .gypsum，本身是一个 zip 压缩包）
 
 ### 导入组
 
