@@ -115,21 +115,23 @@ PATCH `/groups/{group_id}`
 
 对象结构：消息规则
 
-| 字段         | 类型             | 含义                                                                                                             |
-| ------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| display_name | string           | 显示名称                                                                                                         |
-| activate     | boolean          | 当前规则是否启用                                                                                                 |
-| message_type | integer\*        | 匹配的消息类型                                                                                                   |
-| groups_id    | array\<integer\> | 匹配群，留空表示所有                                                                                             |
-| users_id     | array\<integer\> | 匹配 QQ 号，留空表示所有                                                                                         |
-| matcher_type | integer          | 匹配方式<br/>`0` 完全匹配<br/>`1` 关键词匹配<br/>`2` 前缀匹配<br/>`3` 后缀匹配<br/>`4` 命令匹配<br/>`5` 正则匹配 |
-| only_at_me   | boolean          | 是否只有被 at 才会触发                                                                                           |
-| patterns     | array\<string\>  | 匹配表达式的数组                                                                                                 |
-| response     | string           | 回复模板                                                                                                         |
-| priority     | integer          | 优先级                                                                                                           |
-| block        | boolean          | 是否阻止后续规则                                                                                                 |
+| 字段         | 类型                         | 含义                       |
+| ------------ | ---------------------------- | -------------------------- |
+| display_name | string                       | 显示名称                   |
+| activate     | boolean                      | 当前规则是否启用           |
+| message_type | integer<sup>\*1</sup>        | 匹配的消息类型             |
+| groups_id    | array\<integer\>             | 匹配群，留空表示所有       |
+| users_id     | array\<integer\>             | 匹配 QQ 号，留空表示所有   |
+| role         | integer<sup>\*2</sup>        | 匹配的角色类型，0 表示全部 |
+| rate_limit   | object<sup>\*3</sup> \| null | 频率限制，null 表示不限制  |
+| matcher_type | integer<sup>\*4</sup>        | 匹配方式                   |
+| only_at_me   | boolean                      | 是否只有被 at 才会触发     |
+| patterns     | array\<string\>              | 匹配表达式的数组           |
+| response     | string                       | 回复模板                   |
+| priority     | integer                      | 优先级                     |
+| block        | boolean                      | 是否阻止后续规则           |
 
-消息类型编号为
+\*1 消息类型编号为
 
 | 类型         | 编号   |
 | ------------ | ------ |
@@ -143,6 +145,30 @@ PATCH `/groups/{group_id}`
 | 讨论组消息   | 0x0080 |
 
 如需同时匹配多种消息可用`位或`运算，例如：0x07 匹配所有私聊消息
+
+\*2 角色类型编号为
+
+| 类型       | 编号   |
+| ---------- | ------ |
+| 群聊群员   | 0x0001 |
+| 群聊管理员 | 0x0002 |
+| 群聊群主   | 0x0004 |
+| bot 管理员 | 0x0008 |
+
+如需同时匹配多种角色可用`位或`运算，例如：0x0e 匹配所有群管理员、群主以及 bot 管理员
+
+\*3 频率限制对象的字段为
+
+| 字段            | 类型                   | 含义                                                        |
+| --------------- | ---------------------- | ----------------------------------------------------------- |
+| limiter_type    | string                 | 限制方式，`unit_time` 单位时间内限制，`duration` 时间段限制 |
+| unit            | string<sup>\*3.1</sup> | 单位时间限制模式的单位                                      |
+| duration_second | integer                | 时间段限制的周期                                            |
+| max_usage       | integer                | 限制的次数                                                  |
+
+\*3.1 可选的值为 `month`，`day`，`hour`
+
+\*4 可选的值为 `0` 完全匹配，`1` 关键词匹配，`2` 前缀匹配，`3` 后缀匹配，`4` 命令匹配，`5` 正则匹配
 
 ### 列出所有规则
 

@@ -146,6 +146,8 @@ value is {{ some_value }}
 {% endif %}
 ```
 
+> 也可以用 `not in` 表示不包含
+
 ### 裁剪空白符
 
 在标签内侧加上一个 `-` 符号可以裁剪多余的空格或换行
@@ -171,6 +173,36 @@ value is {{ some_value }}
 ## Django 标准库
 
 Django 标准库中包含了大量实用的标签与过滤器，可以参照[Django 文档](https://docs.djangoproject.com/zh-hans/3.1/ref/templates/builtins/)使用。
+
+这里列出一些常用的功能以供参考
+
+### urlencode 过滤器
+
+将字符串进行 url 编码
+
+用法示例：
+
+```jinja
+为您找到的结果：
+https://baidu.com/s?wd={{ state.args | urlencode }}
+```
+
+### now 标签
+
+格式化输出当前时间，注意：此处使用的格式化方法标准为 [go 标准](https://golang.org/pkg/time/#Time.Format)，可参照[教程](https://studygolang.com/articles/15378)，此处简单介绍作为参考：
+
+go 格式固定时间使用 `"2006-01-02 15:04:05 PM"`，用希望的格式写出这个时间即是格式化方法
+
+用法示例：
+
+```jinja
+今年是{% now "2006年" %}
+今年是{% now "06年" %}
+今天是{% now "01月02日" %}
+今天是{% now "1月2日" %}
+现在是{% now "15时04分" %}
+现在是{% now "PM 03时04分" %}
+```
 
 ## 模板变量
 
@@ -364,6 +396,21 @@ at 发送者
 时间到！
 ```
 
+### url_encode
+
+将字符串进行 url 编码
+
+参数：字符串
+
+返回：字符串
+
+用法示例：
+
+```jinja
+为您找到的结果：
+https://baidu.com/s?wd={{ url_encode(state.args) }}
+```
+
 ### file_get_contents
 
 读取文件内容
@@ -462,17 +509,6 @@ at 发送者
 ```
 
 ## 模板过滤器
-
-### urlencode
-
-将字符串进行 url 编码
-
-用法示例：
-
-```jinja
-为您找到的结果：
-https://baidu.com/s?wd={{ state.args | urlencode }}
-```
 
 ### parse
 

@@ -50,5 +50,6 @@ dockers:
     dockerfile: scripts/add.Dockerfile
     image_templates:
       - "ghcr.io/yuudi/gypsum:latest"
-      - "ghcr.io/yuudi/gypsum:{{ .Version }}"
       - "ghcr.io/yuudi/gypsum:{{ .Major }}"
+      - "ghcr.io/yuudi/gypsum:{{ .Major }}.{{ .Minor }}"
+      - "ghcr.io/yuudi/gypsum:{{ .Version }}"

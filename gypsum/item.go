@@ -5,8 +5,7 @@ import (
 	"errors"
 
 	log "github.com/sirupsen/logrus"
-
-	"github.com/yuudi/gypsum/gypsum/helper"
+	zero "github.com/wdvxdr1123/ZeroBot"
 )
 
 type ItemType string
@@ -27,12 +26,24 @@ type UserRecord interface {
 	SaveToDB(selfID uint64) error
 }
 
+type RuleDescriptor interface {
+	ToRule() zero.Rule
+}
+
 func init() {
 	gob.Register(Group{})
 	gob.Register(Job{})
 	gob.Register(Resource{})
 	gob.Register(Rule{})
 	gob.Register(Trigger{})
+}
+
+func RuleAlwaysTrue(_ *zero.Event, _ zero.State) bool {
+	return true
+}
+
+func RuleAlwaysFalse(_ *zero.Event, _ zero.State) bool {
+	return false
 }
 
 func RestoreFromUserRecord(itemType ItemType, itemBytes []byte, newParentID uint64) (uint64, error) {
@@ -43,11 +54,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte, newParentID uint
 			return 0, err
 		}
 		rule.ParentGroup = newParentID
-		itemCursor++
-		cursor := itemCursor
-		if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
-			return 0, err
-		}
+		cursor := itemCursor.Require()
 		rules[cursor] = rule
 		if err := rule.SaveToDB(cursor); err != nil {
 			return 0, err
@@ -59,11 +66,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte, newParentID uint
 			return 0, err
 		}
 		trigger.ParentGroup = newParentID
-		itemCursor++
-		cursor := itemCursor
-		if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
-			return 0, err
-		}
+		cursor := itemCursor.Require()
 		triggers[cursor] = trigger
 		if err := trigger.SaveToDB(cursor); err != nil {
 			return 0, err
@@ -75,11 +78,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte, newParentID uint
 			return 0, err
 		}
 		job.ParentGroup = newParentID
-		itemCursor++
-		cursor := itemCursor
-		if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
-			return 0, err
-		}
+		cursor := itemCursor.Require()
 		jobs[cursor] = job
 		if err := job.SaveToDB(cursor); err != nil {
 			return 0, err
@@ -91,11 +90,7 @@ func RestoreFromUserRecord(itemType ItemType, itemBytes []byte, newParentID uint
 			return 0, err
 		}
 		resource.ParentGroup = newParentID
-		itemCursor++
-		cursor := itemCursor
-		if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
-			return 0, err
-		}
+		cursor := itemCursor.Require()
 		resources[cursor] = resource
 		if err := resource.SaveToDB(cursor); err != nil {
 			return 0, err

@@ -42,9 +42,7 @@ func (r *Resource) ToBytes() ([]byte, error) {
 
 func ResourceFromBytes(b []byte) (*Resource, error) {
 	r := &Resource{}
-	buffer := bytes.Buffer{}
-	buffer.Write(b)
-	decoder := gob.NewDecoder(&buffer)
+	decoder := gob.NewDecoder(bytes.NewReader(b))
 	err := decoder.Decode(r)
 	return r, err
 }
@@ -311,8 +309,7 @@ func uploadResource(c *gin.Context) {
 		return
 	}
 	// save info data
-	itemCursor++
-	cursor := itemCursor
+	cursor := itemCursor.Require()
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    ResourceItem,
 		DisplayName: fileName + ext,
@@ -320,13 +317,6 @@ func uploadResource(c *gin.Context) {
 	})
 	if err := parentGroup.SaveToDB(parentID); err != nil {
 		log.Error(err)
-		c.JSON(500, gin.H{
-			"code":    3000,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
-		return
-	}
-	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

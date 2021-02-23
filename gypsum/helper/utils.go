@@ -14,6 +14,12 @@ func U64ToBytes(i uint64) []byte {
 	return b
 }
 
+func U32ToBytes(i uint32) []byte {
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b,i)
+	return b
+}
+
 func ToUint(b []byte) uint64 {
 	return binary.LittleEndian.Uint64(b)
 }

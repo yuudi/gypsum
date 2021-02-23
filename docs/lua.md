@@ -1,5 +1,38 @@
 # Lua 代码块
 
+## 简介
+
+你可以在 gypsum 的模板中使用 lua 标签来执行 lua 代码块
+
+```lua
+开始执行 Lua
+{% lua %}
+a = "你好"
+b = "世界"
+c = "控制台"
+write(a..b)
+print(a..c)
+{% endlua %}
+```
+
+学习资料：[lua 教程](https://m.php.cn/manual/view/31824.html)
+
+在 gypsum 中，lua 代码块允许执行 300 秒，如果希望修改这个限制请在 lua 标签后添加 timeout 参数
+
+```lua
+{% lua timeout=60 %}
+-- 这个代码块能执行60秒
+sleep(50)
+write("ok")
+{% endlua %}
+
+{% lua timeout="1h" %}
+-- 这个代码块能执行一个小时
+sleep(60*59)
+write("ok")
+{% endlua %}
+```
+
 ## 变量
 
 ### event

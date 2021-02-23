@@ -21,6 +21,7 @@ import (
 
 type RuleType int
 type MessageType uint32
+type UserRole uint32
 
 const (
 	FullMatch RuleType = iota
@@ -42,31 +43,35 @@ const (
 	DiscussMessage
 
 	NoMessage      MessageType = 0
-	AllMessage     MessageType = 0xffffffff
+	AllMessage     MessageType = 0xffff
 	PrivateMessage             = FriendMessage | GroupTmpMessage | OtherTmpMessage
 	GroupMessage               = GroupNormalMessage | GroupAnonymousMessage | GroupNoticeMessage
 )
 
-var messageTypeTable = map[string]MessageType{
-	"group":    GroupMessage,
-	"private":  PrivateMessage,
-	"discuss":  DiscussMessage,
-	"official": OfficialMessage,
-}
+const (
+	GroupMemberUserRole UserRole = 1 << iota
+	GroupAdminUserRole
+	GroupOwnerUserRole
+	BotAdminUserRole
+
+	AllGroupUserRole = GroupMemberUserRole | GroupAdminUserRole | GroupOwnerUserRole
+)
 
 type Rule struct {
-	DisplayName string      `json:"display_name"`
-	Active      bool        `json:"active"`
-	MessageType MessageType `json:"message_type"`
-	GroupsID    []int64     `json:"groups_id"`
-	UsersID     []int64     `json:"users_id"`
-	MatcherType RuleType    `json:"matcher_type"`
-	Patterns    []string    `json:"patterns"`
-	OnlyAtMe    bool        `json:"only_at_me"`
-	Response    string      `json:"response"`
-	Priority    int         `json:"priority"`
-	Block       bool        `json:"block"`
-	ParentGroup uint64      `json:"-"`
+	DisplayName string             `json:"display_name"`
+	Active      bool               `json:"active"`
+	MessageType MessageType        `json:"message_type"`
+	GroupsID    []int64            `json:"groups_id"`
+	UsersID     []int64            `json:"users_id"`
+	Role        UserRole           `json:"role"`
+	RateLimit   *LimiterDescriptor `json:"rate_limit"`
+	MatcherType RuleType           `json:"matcher_type"`
+	Patterns    []string           `json:"patterns"`
+	OnlyAtMe    bool               `json:"only_at_me"`
+	Response    string             `json:"response"`
+	Priority    int                `json:"priority"`
+	Block       bool               `json:"block"`
+	ParentGroup uint64             `json:"-"`
 }
 
 var (
@@ -89,17 +94,37 @@ func RuleFromBytes(b []byte) (*Rule, error) {
 		UsersID:  []int64{},
 		Patterns: []string{},
 	}
-	buffer := bytes.Buffer{}
-	buffer.Write(b)
-	decoder := gob.NewDecoder(&buffer)
+	decoder := gob.NewDecoder(bytes.NewReader(b))
 	err := decoder.Decode(r)
 	return r, err
 }
 
-func typeRule(acceptType MessageType) zero.Rule {
+func (u UserRole) ToGroupRoleList() (roleList []string) {
+	if u&GroupMemberUserRole != 0 {
+		roleList = append(roleList, "member")
+	}
+	if u&GroupAdminUserRole != 0 {
+		roleList = append(roleList, "admin")
+	}
+	if u&GroupOwnerUserRole != 0 {
+		roleList = append(roleList, "owner")
+	}
+	return
+}
+
+func (acceptType MessageType) ToRule() zero.Rule {
 	return func(event *zero.Event, _ zero.State) bool {
-		msgType, ok := messageTypeTable[event.MessageType]
-		if !ok {
+		var msgType MessageType
+		switch event.MessageType {
+		case "group":
+			msgType = GroupMessage
+		case "private":
+			msgType = PrivateMessage
+		case "discuss":
+			msgType = DiscussMessage
+		case "official":
+			msgType = OfficialMessage
+		default:
 			log.Warnf("未知的消息类型：%s", event.MessageType)
 			return false
 		}
@@ -107,11 +132,44 @@ func typeRule(acceptType MessageType) zero.Rule {
 	}
 }
 
+func (u UserRole) ToRule() zero.Rule {
+	if u == 0 {
+		return RuleAlwaysTrue
+	}
+	var filterGroupRole, filterBotAdmin bool
+	var groupRoleList []string
+	if (u & AllGroupUserRole) == AllGroupUserRole {
+		// 三个角色都指定了，就不过滤了
+		filterGroupRole = false
+	} else {
+		groupRoleList = u.ToGroupRoleList()
+		filterGroupRole = true
+	}
+	filterBotAdmin = u&BotAdminUserRole != 0
+	return func(event *zero.Event, state zero.State) bool {
+		if filterGroupRole {
+			if event.Sender != nil {
+				for _, role := range groupRoleList {
+					if event.Sender.Role == role {
+						return true
+					}
+				}
+			}
+		}
+		if filterBotAdmin {
+			for _, id := range botAdmins {
+				if event.UserID == id {
+					return true
+				}
+			}
+		}
+		return false
+	}
+}
+
 func groupsRule(groupsID []int64) zero.Rule {
 	if len(groupsID) == 0 {
-		return func(_ *zero.Event, _ zero.State) bool {
-			return true
-		}
+		return RuleAlwaysTrue
 	}
 	return func(event *zero.Event, _ zero.State) bool {
 		for _, i := range groupsID {
@@ -125,9 +183,7 @@ func groupsRule(groupsID []int64) zero.Rule {
 
 func usersRule(usersID []int64) zero.Rule {
 	if len(usersID) == 0 {
-		return func(_ *zero.Event, _ zero.State) bool {
-			return true
-		}
+		return RuleAlwaysTrue
 	}
 	return func(event *zero.Event, _ zero.State) bool {
 		for _, i := range usersID {
@@ -148,41 +204,46 @@ func (r *Rule) Register(id uint64) error {
 		log.Errorf("模板预处理出错：%s", err)
 		return err
 	}
-	rules := []zero.Rule{typeRule(r.MessageType)}
+	msgRule := make([]zero.Rule, 4)
+	msgRule = append(msgRule, r.MessageType.ToRule())
 	if len(r.GroupsID) != 0 {
-		rules = append(rules, groupsRule(r.GroupsID))
+		msgRule = append(msgRule, groupsRule(r.GroupsID))
 	}
 	if len(r.UsersID) != 0 {
-		rules = append(rules, usersRule(r.UsersID))
+		msgRule = append(msgRule, usersRule(r.UsersID))
 	}
 	if r.OnlyAtMe {
-		rules = append(rules, zero.OnlyToMe)
+		msgRule = append(msgRule, zero.OnlyToMe)
 	}
-	var msgRule zero.Rule
+	if r.Role != 0 {
+		msgRule = append(msgRule, r.Role.ToRule())
+	}
+	if r.RateLimit != nil {
+		r.RateLimit.SetDBKey(helper.U64ToBytes(id))
+		msgRule = append(msgRule, r.RateLimit.ToRule())
+	}
 	switch r.MatcherType {
 	case FullMatch:
-		msgRule = zero.FullMatchRule(r.Patterns...)
+		msgRule = append(msgRule, zero.FullMatchRule(r.Patterns...))
 	case Keyword:
-		msgRule = zero.KeywordRule(r.Patterns...)
+		msgRule = append(msgRule, zero.KeywordRule(r.Patterns...))
 	case Prefix:
-		msgRule = zero.PrefixRule(r.Patterns...)
+		msgRule = append(msgRule, zero.PrefixRule(r.Patterns...))
 	case Suffix:
-		msgRule = zero.SuffixRule(r.Patterns...)
+		msgRule = append(msgRule, zero.SuffixRule(r.Patterns...))
 	case Command:
-		msgRule = zero.CommandRule(r.Patterns...)
+		msgRule = append(msgRule, zero.CommandRule(r.Patterns...))
 	case Regex:
 		if len(r.Patterns) == 0 {
-			msgRule = func(_ *zero.Event, _ zero.State) bool {
-				return false
-			}
+			return errors.New("regex rule without pattern")
 		} else {
-			msgRule = zero.RegexRule(r.Patterns[0])
+			msgRule = append(msgRule, zero.RegexRule(r.Patterns[0]))
 		}
 	default:
 		log.Errorf("Unknown type %#v", r.MatcherType)
 		return errors.New(fmt.Sprintf("Unknown type %#v", r.MatcherType))
 	}
-	zeroMatcher[id] = zero.OnMessage(append(rules, msgRule)...).SetPriority(r.Priority).SetBlock(r.Block).Handle(templateRuleHandler(*tmpl, zero.Send, log.Error))
+	zeroMatcher[id] = zero.OnMessage(msgRule...).SetPriority(r.Priority).SetBlock(r.Block).Handle(templateRuleHandler(*tmpl, zero.Send, log.Error))
 	return nil
 }
 
@@ -352,8 +413,7 @@ func createRule(c *gin.Context) {
 		return
 	}
 	// save
-	itemCursor++
-	cursor := itemCursor
+	cursor := itemCursor.Require()
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    RuleItem,
 		DisplayName: rule.DisplayName,
@@ -361,13 +421,6 @@ func createRule(c *gin.Context) {
 	})
 	if err := parentGroup.SaveToDB(parentID); err != nil {
 		log.Error(err)
-		c.JSON(500, gin.H{
-			"code":    3000,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
-		return
-	}
-	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

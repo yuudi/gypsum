@@ -79,7 +79,7 @@ jobs:
         if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
         run: |
           latest_tag=$(git describe --tags --abbrev=0)
-          ldflags="-X main.version=test-${latest_tag#v}-${GITHUB_SHA:0:7} -X main.commit=${GITHUB_SHA}"
+          ldflags="-X main.version=${latest_tag#v}-test-${GITHUB_SHA:0:7} -X main.commit=${GITHUB_SHA}"
 
           export GOOS=linux
           export GOARCH=amd64

@@ -51,9 +51,7 @@ func TriggerFromByte(b []byte) (*Trigger, error) {
 		UsersID:     []int64{},
 		TriggerType: []string{},
 	}
-	buffer := bytes.Buffer{}
-	buffer.Write(b)
-	decoder := gob.NewDecoder(&buffer)
+	decoder := gob.NewDecoder(bytes.NewReader(b))
 	err := decoder.Decode(t)
 	return t, err
 }
@@ -61,9 +59,7 @@ func TriggerFromByte(b []byte) (*Trigger, error) {
 func noticeRule(noticeTypeCas []string) zero.Rule {
 	if len(noticeTypeCas) == 0 {
 		log.Error("notice_type must have at least one element")
-		return func(_ *zero.Event, _ zero.State) bool {
-			return false
-		}
+		return RuleAlwaysFalse
 	}
 	if len(noticeTypeCas) == 1 {
 		return func(event *zero.Event, _ zero.State) bool {
@@ -76,9 +72,7 @@ func noticeRule(noticeTypeCas []string) zero.Rule {
 		}
 	}
 	log.Error("notice_type have too many element")
-	return func(_ *zero.Event, _ zero.State) bool {
-		return false
-	}
+	return RuleAlwaysFalse
 }
 
 func (t *Trigger) Register(id uint64) error {
@@ -242,8 +236,7 @@ func createTrigger(c *gin.Context) {
 		return
 	}
 	//save
-	itemCursor++
-	cursor := itemCursor
+	cursor := itemCursor.Require()
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    TriggerItem,
 		DisplayName: trigger.DisplayName,
@@ -251,13 +244,6 @@ func createTrigger(c *gin.Context) {
 	})
 	if err := parentGroup.SaveToDB(parentID); err != nil {
 		log.Error(err)
-		c.JSON(500, gin.H{
-			"code":    3000,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
-		return
-	}
-	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

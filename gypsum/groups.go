@@ -66,9 +66,7 @@ func GroupFromBytes(b []byte) (*Group, error) {
 	g := &Group{
 		Items: []Item{},
 	}
-	buffer := bytes.Buffer{}
-	buffer.Write(b)
-	decoder := gob.NewDecoder(&buffer)
+	decoder := gob.NewDecoder(bytes.NewReader(b))
 	err := decoder.Decode(g)
 	return g, err
 }
@@ -330,8 +328,7 @@ func createGroup(c *gin.Context) {
 	}
 	group.ParentGroup = parentID
 
-	itemCursor++
-	cursor := itemCursor
+	cursor := itemCursor.Require()
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    GroupItem,
 		DisplayName: group.DisplayName,
@@ -341,13 +338,6 @@ func createGroup(c *gin.Context) {
 		log.Error(err)
 		c.JSON(500, gin.H{
 			"code":    3000,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
-		return
-	}
-	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
-		c.JSON(500, gin.H{
-			"code":    3031,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
 		})
 		return
@@ -551,8 +541,7 @@ func importGroup(c *gin.Context) {
 		})
 	}
 	var newGroup *Group
-	itemCursor++
-	cursor := itemCursor
+	cursor := itemCursor.Require()
 	for _, file := range zipReader.File {
 		if file.Name == "gypsum-plugin.dat" {
 			fr, err := file.Open()
@@ -663,13 +652,6 @@ func importGroup(c *gin.Context) {
 		ItemID:      cursor,
 	})
 	if err = parentGroup.SaveToDB(parentID); err != nil {
-		c.JSON(500, gin.H{
-			"code":    3000,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
-		return
-	}
-	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		c.JSON(500, gin.H{
 			"code":    3000,
 			"message": fmt.Sprintf("Server got itself into trouble: %s", err),

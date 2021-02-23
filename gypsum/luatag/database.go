@@ -49,9 +49,7 @@ func dbGet(L *lua.LState) int {
 		return 2
 	}
 	var data *lua.LValue
-	buffer := bytes.Buffer{}
-	buffer.Write(bytesData)
-	decoder := gob.NewDecoder(&buffer)
+	decoder := gob.NewDecoder(bytes.NewReader(bytesData))
 	if err := decoder.Decode(&data); err != nil {
 		log.Errorf("error when reading data from database: %s", err)
 		L.Push(lua.LNil)

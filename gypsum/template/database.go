@@ -57,9 +57,7 @@ func DatabaseGet(key interface{}, defaultValue ...interface{}) interface{} {
 		return nil
 	}
 	var data StoredValue
-	buffer := bytes.Buffer{}
-	buffer.Write(bytesData)
-	decoder := gob.NewDecoder(&buffer)
+	decoder := gob.NewDecoder(bytes.NewReader(bytesData))
 	if err := decoder.Decode(&data); err != nil {
 		log.Errorf("error when reading data from database: %s", err)
 		return nil

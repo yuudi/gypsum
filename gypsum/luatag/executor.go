@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/cjoudrey/gluahttp"
@@ -16,10 +17,33 @@ import (
 )
 
 type tagLuaNode struct {
+	Timeout pongo2.IEvaluator
 	wrapper *pongo2.NodeWrapper
 }
 
 func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
+	var timeoutDuration time.Duration
+	if node.Timeout == nil {
+		timeoutDuration = 300 * time.Second
+	} else {
+		// parse time out argument
+		v, err := node.Timeout.Evaluate(ctx)
+		if err != nil {
+			return err
+		}
+		valueString := v.String()
+		var e error
+		seconds, e := strconv.ParseInt(valueString, 10, 32)
+		if e == nil {
+			// all digits
+			timeoutDuration = time.Duration(seconds) * time.Second
+		} else {
+			timeoutDuration, e = time.ParseDuration(valueString)
+			if e != nil {
+				return ctx.Error("unknown time duration: "+e.Error(), nil)
+			}
+		}
+	}
 	b := bytes.NewBuffer(make([]byte, 0, 1024)) // 1 KiB
 	if err := node.wrapper.Execute(ctx, b); err != nil {
 		return err
@@ -82,7 +106,7 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 		L.SetGlobal("state", luaState)
 		ctx.Public["_lua"] = L
 	}
-	timeoutContext, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	timeoutContext, cancel := context.WithTimeout(context.Background(), timeoutDuration)
 	defer cancel()
 	L.SetContext(timeoutContext)
 	if err := L.DoString(s); err != nil {
@@ -93,6 +117,21 @@ func (node tagLuaNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Templ
 
 func TagLuaParser(doc *pongo2.Parser, start *pongo2.Token, arguments *pongo2.Parser) (pongo2.INodeTag, *pongo2.Error) {
 	luaNode := &tagLuaNode{}
+	keyToken := arguments.MatchType(pongo2.TokenIdentifier)
+	if keyToken == nil {
+		luaNode.Timeout = nil
+	} else if keyToken.Val != "timeout" {
+		return nil, arguments.Error("unknown keyword", keyToken)
+	} else {
+		if arguments.Match(pongo2.TokenSymbol, "=") == nil {
+			return nil, arguments.Error("Expected '='.", nil)
+		}
+		valueExpr, err := arguments.ParseExpression()
+		if err != nil {
+			return nil, err
+		}
+		luaNode.Timeout = valueExpr
+	}
 	wrapper, _, err := doc.WrapUntilTag("endlua", "end_lua")
 	if err != nil {
 		return nil, err

@@ -51,9 +51,7 @@ func JobFromBytes(b []byte) (*Job, error) {
 		GroupsID: []int64{},
 		UsersID:  []int64{},
 	}
-	buffer := bytes.Buffer{}
-	buffer.Write(b)
-	decoder := gob.NewDecoder(&buffer)
+	decoder := gob.NewDecoder(bytes.NewReader(b))
 	err := decoder.Decode(j)
 	return j, err
 }
@@ -244,22 +242,13 @@ func createJob(c *gin.Context) {
 		return
 	}
 	// save
-	itemCursor++
-	cursor := itemCursor
+	cursor := itemCursor.Require()
 	parentGroup.Items = append(parentGroup.Items, Item{
 		ItemType:    SchedulerItem,
 		DisplayName: job.DisplayName,
 		ItemID:      cursor,
 	})
 	if err := parentGroup.SaveToDB(parentID); err != nil {
-		log.Error(err)
-		c.JSON(500, gin.H{
-			"code":    3000,
-			"message": fmt.Sprintf("Server got itself into trouble: %s", err),
-		})
-		return
-	}
-	if err := db.Put([]byte("gypsum-$meta-cursor"), helper.U64ToBytes(cursor), nil); err != nil {
 		log.Error(err)
 		c.JSON(500, gin.H{
 			"code":    3000,
