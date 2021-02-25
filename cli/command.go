@@ -10,6 +10,7 @@ import (
 	"github.com/alecthomas/kingpin"
 	log "github.com/sirupsen/logrus"
 	zero "github.com/wdvxdr1123/ZeroBot"
+	"github.com/wdvxdr1123/ZeroBot/driver"
 
 	"github.com/yuudi/gypsum/gypsum"
 )
@@ -129,13 +130,17 @@ func run() {
 	gypsum.BuildCommit = commit
 	gypsum.Config = &conf.Gypsum
 	zero.Run(zero.Config{
-		Host:          conf.Host,
-		Port:          strconv.Itoa(conf.Port),
-		AccessToken:   conf.AccessToken,
 		NickName:      conf.ZeroBot.NickName,
 		CommandPrefix: conf.ZeroBot.CommandPrefix,
 		SuperUsers:    conf.ZeroBot.SuperUsers,
+		Driver: []zero.Driver{
+			driver.NewWebSocketClient(conf.Host, strconv.Itoa(conf.Port), conf.AccessToken),
+		},
 	})
-
+	gypsum.Init()
+	zero.RangeBot(func(id int64, ctx *zero.Ctx) bool {
+		gypsum.Bot = ctx
+		return false
+	})
 	select {}
 }

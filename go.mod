@@ -21,7 +21,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tidwall/gjson v1.6.8
 	github.com/ugorji/go v1.2.4 // indirect
-	github.com/wdvxdr1123/ZeroBot v0.0.0-20210222145945-329707c6a35a
+	github.com/wdvxdr1123/ZeroBot v1.0.1
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect

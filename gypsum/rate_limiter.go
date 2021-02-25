@@ -137,7 +137,7 @@ func (d *LimiterDescriptor) ToRule() zero.Rule {
 		log.Error("convert limiter to rule: ", err)
 		return RuleAlwaysFalse
 	}
-	return func(_ *zero.Event, _ zero.State) bool {
+	return func(_ *zero.Ctx) bool {
 		available := limiter.Require()
 		return available
 	}

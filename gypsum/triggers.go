@@ -62,13 +62,13 @@ func noticeRule(noticeTypeCas []string) zero.Rule {
 		return RuleAlwaysFalse
 	}
 	if len(noticeTypeCas) == 1 {
-		return func(event *zero.Event, _ zero.State) bool {
-			return event.DetailType == noticeTypeCas[0]
+		return func(ctx *zero.Ctx) bool {
+			return ctx.Event.DetailType == noticeTypeCas[0]
 		}
 	}
 	if len(noticeTypeCas) == 2 {
-		return func(event *zero.Event, _ zero.State) bool {
-			return event.DetailType == noticeTypeCas[0] && event.SubType == noticeTypeCas[1]
+		return func(ctx *zero.Ctx) bool {
+			return ctx.Event.DetailType == noticeTypeCas[0] && ctx.Event.SubType == noticeTypeCas[1]
 		}
 	}
 	log.Error("notice_type have too many element")
@@ -84,28 +84,28 @@ func (t *Trigger) Register(id uint64) error {
 		log.Errorf("模板预处理出错：%s", err)
 		return err
 	}
-	zeroTrigger[id] = zero.OnNotice(noticeRule(t.TriggerType), groupsRule(t.GroupsID), usersRule(t.UsersID)).SetPriority(t.Priority).SetBlock(t.Block).Handle(templateTriggerHandler(*tmpl, zero.Send, log.Error))
+	zeroTrigger[id] = zero.OnNotice(noticeRule(t.TriggerType), groupsRule(t.GroupsID), usersRule(t.UsersID)).SetPriority(t.Priority).SetBlock(t.Block).Handle(templateTriggerHandler(*tmpl, Bot.Send, log.Error))
 	return nil
 }
 
-func templateTriggerHandler(tmpl pongo2.Template, send func(event zero.Event, msg interface{}) int64, errLogger func(...interface{})) zero.Handler {
-	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
+func templateTriggerHandler(tmpl pongo2.Template, send func(msg interface{}) int64, errLogger func(...interface{})) zero.Handler {
+	return func(ctx *zero.Ctx) {
 		var luaState *lua.LState
 		defer func() {
 			if luaState != nil {
 				luaState.Close()
 			}
 		}()
-		reply, err := tmpl.Execute(buildExecutionContext(matcher, event, state, luaState))
+		reply, err := tmpl.Execute(buildExecutionContext(ctx, luaState))
 		if err != nil {
 			errLogger("渲染模板出错：" + err.Error())
-			return zero.FinishResponse
+			return
 		}
 		reply = strings.TrimSpace(reply)
 		if reply != "" {
-			send(event, reply)
+			send(reply)
 		}
-		return zero.FinishResponse
+		return
 	}
 }
 

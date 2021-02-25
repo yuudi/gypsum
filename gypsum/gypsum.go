@@ -53,27 +53,14 @@ func (c *ConfigType) CheckValid() (changed bool, err error) {
 
 var Config *ConfigType
 
+var Bot *zero.Ctx
+
 var (
 	BuildVersion = "0.0.0-unknown"
 	BuildCommit  = "unknown"
 )
 
-func init() {
-	zero.RegisterPlugin(&gypsumPlugin{}) // 注册插件
-}
-
-type gypsumPlugin struct{}
-
-func (_ *gypsumPlugin) GetPluginInfo() zero.PluginInfo { // 返回插件信息
-	return zero.PluginInfo{
-		Author:     "yuudi",
-		PluginName: "冰石自定义",
-		Version:    "v" + BuildVersion,
-		Details:    "冰石自定义",
-	}
-}
-
-func (_ *gypsumPlugin) Start() { // 插件主体
+func Init() { // 插件主体
 	if err := initTemplating(); err != nil {
 		log.Fatalf("pongo2引擎初始化错误：%s", err)
 		return

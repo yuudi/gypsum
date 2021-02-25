@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/flosch/pongo2"
-	zero "github.com/wdvxdr1123/ZeroBot"
 )
 
 type MessageType int
@@ -32,9 +31,9 @@ func (node *tagSendNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.Tem
 	}
 	switch node.targetType {
 	case PrivateMessageType:
-		zero.SendPrivateMessage(node.targetID, messageSend)
+		Bot.SendPrivateMessage(node.targetID, messageSend)
 	case GroupMessageType:
-		zero.SendGroupMessage(node.targetID, messageSend)
+		Bot.SendGroupMessage(node.targetID, messageSend)
 	}
 	return nil
 }

@@ -73,7 +73,8 @@ func initTemplating() error {
 
 	// set lua `res` func
 	luatag.SetResFunc(resourcePathFunc(Config.ResourceShare))
-
+	luatag.Bot = Bot
+	template.Bot = Bot
 	return nil
 }
 
@@ -89,51 +90,52 @@ func filterSilence(_ *pongo2.Value, _ *pongo2.Value) (*pongo2.Value, *pongo2.Err
 	return pongo2.AsValue(nil), nil
 }
 
-func buildExecutionContext(matcher *zero.Matcher, event zero.Event, state zero.State, luaState *lua.LState) pongo2.Context {
+func buildExecutionContext(ctx *zero.Ctx, luaState *lua.LState) pongo2.Context {
+	event := ctx.Event
 	return pongo2.Context{
-		"matcher": matcher,
-		"state":   state,
+		"matcher": ctx.GetMatcher(),
+		"state":   ctx.State,
 		"event": func() interface{} {
 			e := make(map[string]interface{})
-			if err := jsoniter.UnmarshalFromString(event.RawEvent.Raw, &e); err != nil {
+			if err := jsoniter.UnmarshalFromString(ctx.Event.RawEvent.Raw, &e); err != nil {
 				log.Errorf("error when decode event json: %s", err)
 			}
 			return e
 		},
-		"json_event": &event.RawEvent.Raw,
+		"json_event": &ctx.Event.RawEvent.Raw,
 		"at_sender": func() *pongo2.Value {
-			if event.GroupID == 0 {
-				log.Warnf("cannot at sender in event %s/%s", event.PostType, event.SubType)
+			if ctx.Event.GroupID == 0 {
+				log.Warnf("cannot at sender in event %s/%s", ctx.Event.PostType, ctx.Event.SubType)
 				return pongo2.AsValue(nil)
 			}
-			return pongo2.AsSafeValue(fmt.Sprintf("[CQ:at,qq=%d]", event.UserID))
+			return pongo2.AsSafeValue(fmt.Sprintf("[CQ:at,qq=%d]", ctx.Event.UserID))
 		},
 		"approve": func() {
 			if event.PostType != "request" {
-				log.Warnf("cannot approve: event is not a request: %#v", event)
+				log.Warnf("cannot approve: event is not a request: %#v", ctx.Event)
 			}
 			switch event.RequestType {
 			case "friend":
-				zero.SetFriendAddRequest(event.Flag, true, "")
+				ctx.SetFriendAddRequest(event.Flag, true, "")
 			case "group":
-				zero.SetGroupAddRequest(event.Flag, event.SubType, true, "")
+				ctx.SetGroupAddRequest(event.Flag, event.SubType, true, "")
 			}
 		},
 		"withdraw": func() {
 			if event.MessageType != "group" {
 				log.Warnf("cannot withdraw: message is not a group message: %#v", event)
 			}
-			zero.DeleteMessage(event.MessageID)
+			ctx.DeleteMessage(event.MessageID)
 		},
 		"set_title": func(title string, qqid ...int64) {
 			if event.MessageType != "group" {
 				log.Warnf("cannot set title: message is not a group message: %#v", event)
 			}
 			if len(qqid) == 0 {
-				zero.SetGroupSpecialTitle(event.GroupID, event.UserID, title)
+				ctx.SetGroupSpecialTitle(event.GroupID, event.UserID, title)
 			} else {
 				for _, user := range qqid {
-					zero.SetGroupSpecialTitle(event.GroupID, user, title)
+					ctx.SetGroupSpecialTitle(event.GroupID, user, title)
 				}
 			}
 		},
@@ -148,10 +150,10 @@ func buildExecutionContext(matcher *zero.Matcher, event zero.Event, state zero.S
 				return
 			}
 			if len(qqid) == 0 {
-				zero.SetGroupBan(event.GroupID, event.UserID, d)
+				ctx.SetGroupBan(event.GroupID, event.UserID, d)
 			} else {
 				for _, user := range qqid {
-					zero.SetGroupBan(event.GroupID, user, d)
+					ctx.SetGroupBan(event.GroupID, user, d)
 				}
 			}
 		},

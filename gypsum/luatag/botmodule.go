@@ -10,6 +10,8 @@ import (
 	luaJson "layeh.com/gopher-json"
 )
 
+var Bot *zero.Ctx
+
 func botModLoaderFunc(event *zero.Event) lua.LGFunction {
 	return func(L *lua.LState) int {
 		mod := L.NewTable()
@@ -50,8 +52,8 @@ func botApi(L *lua.LState) int {
 			}
 		})
 	}
-	result := zero.CallAction(action, params)
-	luaResult, _ := luaJson.Decode(L, []byte(result.Raw))
+	result := Bot.CallAction(action, params)
+	luaResult, _ := luaJson.Decode(L, []byte(result.Data.Raw))
 	L.Push(luaResult)
 	return 1
 }
@@ -74,7 +76,9 @@ func sendToEvent(event *zero.Event) lua.LGFunction {
 		if !safe {
 			msg = zeroMessage.EscapeCQCodeText(msg)
 		}
-		messageID := zero.Send(*event, msg)
+		Bot.Event = event
+		messageID := Bot.Send(msg)
+		Bot.Event = nil
 		L.Push(lua.LNumber(messageID))
 		return 1
 	}
@@ -97,7 +101,7 @@ func sendPrivateMessage(L *lua.LState) int {
 	if !safe {
 		message = zeroMessage.EscapeCQCodeText(message)
 	}
-	messageID := zero.SendPrivateMessage(userID, message)
+	messageID := Bot.SendPrivateMessage(userID, message)
 	L.Push(lua.LNumber(messageID))
 	return 1
 }
@@ -119,7 +123,7 @@ func sendGroupMessage(L *lua.LState) int {
 	if !safe {
 		message = zeroMessage.EscapeCQCodeText(message)
 	}
-	messageID := zero.SendGroupMessage(groupID, message)
+	messageID := Bot.SendGroupMessage(groupID, message)
 	L.Push(lua.LNumber(messageID))
 	return 1
 }
@@ -156,12 +160,12 @@ func getNextMessage(event *zero.Event) lua.LGFunction {
 		}
 		if groupID == 0 {
 			// 0 表示私聊
-			rules = append(rules, func(event *zero.Event, _ zero.State) bool {
-				return event.MessageType == "private"
+			rules = append(rules, func(ctx *zero.Ctx) bool {
+				return ctx.Event.MessageType == "private"
 			})
 		} else {
-			rules = append(rules, func(ev *zero.Event, _ zero.State) bool {
-				return ev.GroupID == groupID
+			rules = append(rules, func(ctx *zero.Ctx) bool {
+				return ctx.Event.GroupID == groupID
 			})
 		}
 		timeout := L.ToNumber(3)
@@ -178,7 +182,7 @@ func getNextMessage(event *zero.Event) lua.LGFunction {
 				Protect: true, // return error instead of panic
 				Handler: nil,
 			}
-			userDefinedRule := func(event *zero.Event, state zero.State) bool {
+			userDefinedRule := func(ctx *zero.Ctx) bool {
 				luaEvent, err := luaJson.Decode(L, []byte(event.RawEvent.Raw))
 				if err != nil {
 					panic(err)
@@ -199,12 +203,10 @@ func getNextMessage(event *zero.Event) lua.LGFunction {
 			Temp:     true,
 			Block:    true,
 			Priority: 1,
-			State:    map[string]interface{}{},
 			Type:     zero.Type("message"),
 			Rules:    rules,
-			Handler: func(_ *zero.Matcher, ev zero.Event, _ zero.State) zero.Response {
-				message <- ev.RawMessage
-				return zero.SuccessResponse
+			Handler: func(ctx *zero.Ctx) {
+				message <- ctx.Event.RawMessage
 			},
 		}
 		zero.StoreTempMatcher(&tempMather)
@@ -234,9 +236,9 @@ func approveToEvent(event *zero.Event) lua.LGFunction {
 		}
 		switch event.RequestType {
 		case "friend":
-			go zero.SetFriendAddRequest(event.Flag, true, "")
+			go Bot.SetFriendAddRequest(event.Flag, true, "")
 		case "group":
-			go zero.SetGroupAddRequest(event.Flag, event.SubType, true, "")
+			go Bot.SetGroupAddRequest(event.Flag, event.SubType, true, "")
 		}
 		return 0
 	}
@@ -257,7 +259,7 @@ func withdrawEventMessage(event *zero.Event) lua.LGFunction {
 			L.Push(lua.LString("cannot withdraw on message " + event.MessageType))
 			return 1
 		}
-		go zero.DeleteMessage(event.MessageID)
+		go Bot.DeleteMessage(event.MessageID)
 		return 0
 	}
 }
@@ -278,7 +280,7 @@ func setTitleToEvent(event *zero.Event) lua.LGFunction {
 		if targetID == 0 {
 			targetID = event.UserID
 		}
-		go zero.SetGroupSpecialTitle(event.GroupID, targetID, title)
+		go Bot.SetGroupSpecialTitle(event.GroupID, targetID, title)
 		return 0
 	}
 }
@@ -300,7 +302,7 @@ func setGroupBanToEvent(event *zero.Event) lua.LGFunction {
 		if targetID == 0 {
 			targetID = event.UserID
 		}
-		go zero.SetGroupBan(event.GroupID, targetID, duration)
+		go Bot.SetGroupBan(event.GroupID, targetID, duration)
 		return 0
 	}
 }

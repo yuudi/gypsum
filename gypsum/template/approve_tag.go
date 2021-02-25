@@ -7,6 +7,8 @@ import (
 	zero "github.com/wdvxdr1123/ZeroBot"
 )
 
+var Bot *zero.Ctx
+
 type tagApproveNode struct{}
 
 func (node *tagApproveNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.TemplateWriter) *pongo2.Error {
@@ -26,9 +28,9 @@ func (node *tagApproveNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2.
 	}
 	switch event.RequestType {
 	case "friend":
-		go zero.SetFriendAddRequest(event.Flag, true, "")
+		go Bot.SetFriendAddRequest(event.Flag, true, "")
 	case "group":
-		go zero.SetGroupAddRequest(event.Flag, event.SubType, true, "")
+		go Bot.SetGroupAddRequest(event.Flag, event.SubType, true, "")
 	}
 	return nil
 }

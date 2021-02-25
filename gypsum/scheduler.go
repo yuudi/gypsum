@@ -12,7 +12,6 @@ import (
 	"github.com/robfig/cron/v3"
 	log "github.com/sirupsen/logrus"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	zero "github.com/wdvxdr1123/ZeroBot"
 	lua "github.com/yuin/gopher-lua"
 
 	"github.com/yuudi/gypsum/gypsum/helper"
@@ -79,10 +78,10 @@ func (j *Job) Executor() (func(), *uint64, error) {
 		msg = strings.TrimSpace(msg)
 		if msg != "" {
 			for _, friend := range j.UsersID {
-				zero.SendPrivateMessage(friend, msg)
+				Bot.SendPrivateMessage(friend, msg)
 			}
 			for _, group := range j.GroupsID {
-				zero.SendGroupMessage(group, msg)
+				Bot.SendGroupMessage(group, msg)
 			}
 			log.Infof("scheduled job executed: %s", msg)
 		}
