@@ -24,7 +24,7 @@ func (node *tagWithdrawNode) Execute(ctx *pongo2.ExecutionContext, writer pongo2
 	if event.MessageType != "group" {
 		return ctx.Error(fmt.Sprintf("cannot withdraw in event %s/%s", event.PostType, event.DetailType), nil)
 	}
-	go zero.DeleteMessage(event.MessageID)
+	go Bot.DeleteMessage(event.MessageID)
 	return nil
 }
 

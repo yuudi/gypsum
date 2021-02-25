@@ -27,7 +27,7 @@ type responseReceiver struct {
 	contents strings.Builder
 }
 
-func (r *responseReceiver) ReceiveSend(_ zero.Event, msg interface{}) int64 {
+func (r *responseReceiver) ReceiveSend(msg interface{}) int64 {
 	r.contents.WriteString(msg.(string))
 	return 0
 }
@@ -62,13 +62,17 @@ func (t *testCase) TestMessage() (string, bool, error) {
 	}
 	var event zero.Event
 	var state zero.State = make(map[string]interface{})
+	var ctx = &zero.Ctx{
+		Event: &event,
+		State: state,
+	}
 	err := jsoniter.UnmarshalFromString(t.Event.String(), &event)
 	if err != nil {
 		return "", false, errors.New("json解析出错：" + err.Error())
 	}
 	event.Message = zeroMessage.ParseMessageFromString(t.Event.Get("message").String())
 	event.RawEvent = t.Event
-	matched := zeroRule(&event, state)
+	matched := zeroRule(ctx)
 	if !matched {
 		return "", false, nil
 	}
@@ -78,7 +82,7 @@ func (t *testCase) TestMessage() (string, bool, error) {
 	}
 	var receiver responseReceiver
 	handler := templateRuleHandler(*tmpl, receiver.ReceiveSend, receiver.ReceiveLogger)
-	handler(nil, event, state)
+	handler(ctx)
 	return receiver.String(), true, nil
 }
 
@@ -89,10 +93,14 @@ func (t *testCase) TestNotice() (string, error) {
 	}
 	var event zero.Event
 	var state zero.State
+	var ctx = &zero.Ctx{
+		Event: &event,
+		State: state,
+	}
 	event.RawEvent = t.Event
 	var receiver responseReceiver
 	handler := templateTriggerHandler(*tmpl, receiver.ReceiveSend, receiver.ReceiveLogger)
-	handler(nil, event, state)
+	handler(ctx)
 	return receiver.String(), nil
 }
 

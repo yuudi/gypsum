@@ -38,11 +38,11 @@ func init() {
 	gob.Register(Trigger{})
 }
 
-func RuleAlwaysTrue(_ *zero.Event, _ zero.State) bool {
+func RuleAlwaysTrue(_ *zero.Ctx) bool {
 	return true
 }
 
-func RuleAlwaysFalse(_ *zero.Event, _ zero.State) bool {
+func RuleAlwaysFalse(_ *zero.Ctx) bool {
 	return false
 }
 

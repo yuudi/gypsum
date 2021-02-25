@@ -113,9 +113,9 @@ func (u UserRole) ToGroupRoleList() (roleList []string) {
 }
 
 func (acceptType MessageType) ToRule() zero.Rule {
-	return func(event *zero.Event, _ zero.State) bool {
+	return func(ctx *zero.Ctx) bool {
 		var msgType MessageType
-		switch event.MessageType {
+		switch ctx.Event.MessageType {
 		case "group":
 			msgType = GroupMessage
 		case "private":
@@ -125,7 +125,7 @@ func (acceptType MessageType) ToRule() zero.Rule {
 		case "official":
 			msgType = OfficialMessage
 		default:
-			log.Warnf("未知的消息类型：%s", event.MessageType)
+			log.Warnf("未知的消息类型：%s", ctx.Event.MessageType)
 			return false
 		}
 		return (msgType & acceptType) != NoMessage
@@ -146,11 +146,11 @@ func (u UserRole) ToRule() zero.Rule {
 		filterGroupRole = true
 	}
 	filterBotAdmin = u&BotAdminUserRole != 0
-	return func(event *zero.Event, state zero.State) bool {
+	return func(ctx *zero.Ctx) bool {
 		if filterGroupRole {
-			if event.Sender != nil {
+			if ctx.Event.Sender != nil {
 				for _, role := range groupRoleList {
-					if event.Sender.Role == role {
+					if ctx.Event.Sender.Role == role {
 						return true
 					}
 				}
@@ -158,7 +158,7 @@ func (u UserRole) ToRule() zero.Rule {
 		}
 		if filterBotAdmin {
 			for _, id := range botAdmins {
-				if event.UserID == id {
+				if ctx.Event.UserID == id {
 					return true
 				}
 			}
@@ -171,9 +171,9 @@ func groupsRule(groupsID []int64) zero.Rule {
 	if len(groupsID) == 0 {
 		return RuleAlwaysTrue
 	}
-	return func(event *zero.Event, _ zero.State) bool {
+	return func(ctx *zero.Ctx) bool {
 		for _, i := range groupsID {
-			if i == event.GroupID {
+			if i == ctx.Event.GroupID {
 				return true
 			}
 		}
@@ -185,9 +185,9 @@ func usersRule(usersID []int64) zero.Rule {
 	if len(usersID) == 0 {
 		return RuleAlwaysTrue
 	}
-	return func(event *zero.Event, _ zero.State) bool {
+	return func(ctx *zero.Ctx) bool {
 		for _, i := range usersID {
-			if i == event.UserID {
+			if i == ctx.Event.UserID {
 				return true
 			}
 		}
@@ -243,28 +243,32 @@ func (r *Rule) Register(id uint64) error {
 		log.Errorf("Unknown type %#v", r.MatcherType)
 		return errors.New(fmt.Sprintf("Unknown type %#v", r.MatcherType))
 	}
-	zeroMatcher[id] = zero.OnMessage(msgRule...).SetPriority(r.Priority).SetBlock(r.Block).Handle(templateRuleHandler(*tmpl, zero.Send, log.Error))
+	zeroMatcher[id] = zero.OnMessage(msgRule...).SetPriority(r.Priority).SetBlock(r.Block).Handle(templateRuleHandler(*tmpl, nil, log.Error))
 	return nil
 }
 
-func templateRuleHandler(tmpl pongo2.Template, send func(event zero.Event, msg interface{}) int64, errLogger func(...interface{})) zero.Handler {
-	return func(matcher *zero.Matcher, event zero.Event, state zero.State) zero.Response {
+func templateRuleHandler(tmpl pongo2.Template, send func(msg interface{}) int64, errLogger func(...interface{})) zero.Handler {
+	return func(ctx *zero.Ctx) {
 		var luaState *lua.LState
 		defer func() {
 			if luaState != nil {
 				luaState.Close()
 			}
 		}()
-		reply, err := tmpl.Execute(buildExecutionContext(matcher, event, state, luaState))
+		reply, err := tmpl.Execute(buildExecutionContext(ctx, luaState))
 		if err != nil {
 			errLogger("渲染模板出错：" + err.Error())
-			return zero.FinishResponse
+			return
 		}
 		reply = strings.TrimSpace(reply)
 		if reply != "" {
-			send(event, reply)
+			if send != nil {
+				send(reply)
+			} else {
+				ctx.Send(reply)
+			}
 		}
-		return zero.FinishResponse
+		return
 	}
 }
 
