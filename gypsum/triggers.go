@@ -84,7 +84,7 @@ func (t *Trigger) Register(id uint64) error {
 		log.Errorf("模板预处理出错：%s", err)
 		return err
 	}
-	zeroTrigger[id] = zero.OnNotice(noticeRule(t.TriggerType), groupsRule(t.GroupsID), usersRule(t.UsersID)).SetPriority(t.Priority).SetBlock(t.Block).Handle(templateTriggerHandler(*tmpl, Bot.Send, log.Error))
+	zeroTrigger[id] = zero.OnNotice(noticeRule(t.TriggerType), groupsRule(t.GroupsID), usersRule(t.UsersID)).SetPriority(t.Priority).SetBlock(t.Block).Handle(templateTriggerHandler(*tmpl, nil, log.Error))
 	return nil
 }
 
@@ -103,7 +103,11 @@ func templateTriggerHandler(tmpl pongo2.Template, send func(msg interface{}) int
 		}
 		reply = strings.TrimSpace(reply)
 		if reply != "" {
-			send(reply)
+			if send != nil {
+				send(reply)
+			} else {
+				ctx.Send(reply)
+			}
 		}
 		return
 	}

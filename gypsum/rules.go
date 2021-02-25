@@ -243,7 +243,7 @@ func (r *Rule) Register(id uint64) error {
 		log.Errorf("Unknown type %#v", r.MatcherType)
 		return errors.New(fmt.Sprintf("Unknown type %#v", r.MatcherType))
 	}
-	zeroMatcher[id] = zero.OnMessage(msgRule...).SetPriority(r.Priority).SetBlock(r.Block).Handle(templateRuleHandler(*tmpl, Bot.Send, log.Error))
+	zeroMatcher[id] = zero.OnMessage(msgRule...).SetPriority(r.Priority).SetBlock(r.Block).Handle(templateRuleHandler(*tmpl, nil, log.Error))
 	return nil
 }
 
@@ -262,7 +262,11 @@ func templateRuleHandler(tmpl pongo2.Template, send func(msg interface{}) int64,
 		}
 		reply = strings.TrimSpace(reply)
 		if reply != "" {
-			send(reply)
+			if send != nil {
+				send(reply)
+			} else {
+				ctx.Send(reply)
+			}
 		}
 		return
 	}
