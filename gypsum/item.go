@@ -29,7 +29,7 @@ type UserRecord interface {
 
 func init() {
 	gob.Register(Group{})
-	gob.Register(Job{})
+	gob.Register(ScheduledJob{})
 	gob.Register(Resource{})
 	gob.Register(Rule{})
 	gob.Register(Trigger{})

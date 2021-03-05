@@ -18,7 +18,7 @@ import (
 	"github.com/yuudi/gypsum/gypsum/helper"
 )
 
-type Job struct {
+type ScheduledJob struct {
 	DisplayName string  `json:"display_name"`
 	Active      bool    `json:"active"`
 	GroupsID    []int64 `json:"groups_id"`
@@ -31,13 +31,13 @@ type Job struct {
 
 var (
 	scheduler *cron.Cron
-	jobs      map[uint64]*Job
+	jobs      map[uint64]*ScheduledJob
 	entries   map[uint64]cron.EntryID
 )
 
 var specParser = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
 
-func (j *Job) ToBytes() ([]byte, error) {
+func (j *ScheduledJob) ToBytes() ([]byte, error) {
 	buffer := bytes.Buffer{}
 	encoder := gob.NewEncoder(&buffer)
 	if err := encoder.Encode(j); err != nil {
@@ -46,8 +46,8 @@ func (j *Job) ToBytes() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func JobFromBytes(b []byte) (*Job, error) {
-	j := &Job{
+func JobFromBytes(b []byte) (*ScheduledJob, error) {
+	j := &ScheduledJob{
 		GroupsID: []int64{},
 		UsersID:  []int64{},
 	}
@@ -58,7 +58,7 @@ func JobFromBytes(b []byte) (*Job, error) {
 	return j, err
 }
 
-func (j *Job) Executor() (func(), *uint64, error) {
+func (j *ScheduledJob) Executor() (func(), *uint64, error) {
 	tmpl, err := pongo2.FromString(j.Action)
 	if err != nil {
 		return nil, nil, err
@@ -98,7 +98,7 @@ func (j *Job) Executor() (func(), *uint64, error) {
 	}, &jobID, nil
 }
 
-func (j *Job) Register(id uint64) error {
+func (j *ScheduledJob) Register(id uint64) error {
 	if !j.Active {
 		return nil
 	}
@@ -117,7 +117,7 @@ func (j *Job) Register(id uint64) error {
 
 func loadJobs() {
 	scheduler = cron.New()
-	jobs = make(map[uint64]*Job)
+	jobs = make(map[uint64]*ScheduledJob)
 	entries = make(map[uint64]cron.EntryID)
 	iter := db.NewIterator(util.BytesPrefix([]byte("gypsum-jobs-")), nil)
 	defer func() {
@@ -143,7 +143,7 @@ func loadJobs() {
 	go scheduler.Start()
 }
 
-func (j *Job) SaveToDB(idx uint64) error {
+func (j *ScheduledJob) SaveToDB(idx uint64) error {
 	v, err := j.ToBytes()
 	if err != nil {
 		return err
@@ -151,15 +151,15 @@ func (j *Job) SaveToDB(idx uint64) error {
 	return db.Put(append([]byte("gypsum-jobs-"), helper.U64ToBytes(idx)...), v, nil)
 }
 
-func (j *Job) GetParentID() uint64 {
+func (j *ScheduledJob) GetParentID() uint64 {
 	return j.ParentGroup
 }
 
-func (j *Job) GetDisplayName() string {
+func (j *ScheduledJob) GetDisplayName() string {
 	return j.DisplayName
 }
 
-func (j *Job) NewParent(selfID, parentID uint64) error {
+func (j *ScheduledJob) NewParent(selfID, parentID uint64) error {
 	j.ParentGroup = parentID
 	v, err := j.ToBytes()
 	if err != nil {
@@ -195,7 +195,7 @@ func getJobByID(c *gin.Context) {
 }
 
 func createJob(c *gin.Context) {
-	var job Job
+	var job ScheduledJob
 	if err := c.BindJSON(&job); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
@@ -358,7 +358,7 @@ func modifyJob(c *gin.Context) {
 		})
 		return
 	}
-	var newJob Job
+	var newJob ScheduledJob
 	if err := c.BindJSON(&newJob); err != nil {
 		c.JSON(400, gin.H{
 			"code":    2000,
