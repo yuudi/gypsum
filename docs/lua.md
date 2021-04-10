@@ -201,7 +201,7 @@ bot.send_private(event.user_id, "您的暗骰点数为：" .. math.random(1, 6))
 {% lua %}
 local bot = require("bot")
 
-send("请问您需要查找哪座城市的天气？")
+bot.send("请问您需要查找哪座城市的天气？")
 reply, err = bot.get()
 if(err != nil)
 then
