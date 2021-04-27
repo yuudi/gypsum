@@ -54,7 +54,7 @@ docker pull ghcr.io/yuudi/gypsum
 docker run --rm -it -v ${PWD}/gypsum:/gypsum ghcr.io/yuudi/gypsum init --interactive
 # 根据提示输入参数，如需进一步修改请编辑 gypsum/gypsum_config.toml 文件
 
-docker rum -d -v ${PWD}/gypsum:/gypsum --name gypsum ghcr.io/yuudi/gypsum
+docker run -d -v ${PWD}/gypsum:/gypsum --name gypsum ghcr.io/yuudi/gypsum
 # 最好同时将 gypsum 目录同时挂载至 gocqhttp 容器，以便共享文件
 ```
 
