@@ -19,7 +19,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.8.0
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/tidwall/gjson v1.6.8
+	github.com/tidwall/gjson v1.7.5
 	github.com/ugorji/go v1.2.4 // indirect
 	github.com/wdvxdr1123/ZeroBot v1.0.1
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
