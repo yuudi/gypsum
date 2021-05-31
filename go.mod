@@ -15,15 +15,15 @@ require (
 	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf
-	github.com/json-iterator/go v1.1.10
+	github.com/json-iterator/go v1.1.11
 	github.com/leodido/go-urn v1.2.1 // indirect
+	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/sirupsen/logrus v1.8.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/tidwall/gjson v1.6.8
-	github.com/tidwall/pretty v1.1.0 // indirect
+	github.com/tidwall/gjson v1.8.0
 	github.com/ugorji/go v1.2.4 // indirect
-	github.com/wdvxdr1123/ZeroBot v1.0.1
+	github.com/wdvxdr1123/ZeroBot v1.2.0
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
 	golang.org/x/sys v0.0.0-20210305034016-7844c3c200c3 // indirect
