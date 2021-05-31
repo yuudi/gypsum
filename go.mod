@@ -13,6 +13,7 @@ require (
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
 	github.com/golang/protobuf v1.4.3 // indirect
+	github.com/golang/snappy v0.0.3 // indirect
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf
 	github.com/json-iterator/go v1.1.10
 	github.com/leodido/go-urn v1.2.1 // indirect
@@ -20,10 +21,12 @@ require (
 	github.com/sirupsen/logrus v1.8.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tidwall/gjson v1.6.8
+	github.com/tidwall/pretty v1.1.0 // indirect
 	github.com/ugorji/go v1.2.4 // indirect
 	github.com/wdvxdr1123/ZeroBot v1.0.1
 	github.com/yuin/gopher-lua v0.0.0-20200816102855-ee81675732da
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
+	golang.org/x/sys v0.0.0-20210305034016-7844c3c200c3 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	layeh.com/gopher-json v0.0.0-20201124131017-552bb3c4c3bf
