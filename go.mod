@@ -18,7 +18,7 @@ require (
 	github.com/json-iterator/go v1.1.10
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/robfig/cron/v3 v3.0.1
-	github.com/sirupsen/logrus v1.8.0
+	github.com/sirupsen/logrus v1.8.1
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tidwall/gjson v1.6.8
 	github.com/tidwall/pretty v1.1.0 // indirect
