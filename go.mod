@@ -25,7 +25,7 @@ require (
 	github.com/tidwall/gjson v1.8.0
 	github.com/tidwall/pretty v1.1.1 // indirect
 	github.com/ugorji/go v1.2.6 // indirect
-	github.com/wdvxdr1123/ZeroBot v1.2.0
+	github.com/wdvxdr1123/ZeroBot v1.2.1
 	github.com/yuin/gopher-lua v0.0.0-20210529063254-f4c35e4016d9
 	golang.org/x/crypto v0.0.0-20210513164829-c07d793c2f9a // indirect
 	golang.org/x/sys v0.0.0-20210531080801-fdfd190a6549 // indirect
