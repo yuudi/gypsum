@@ -22,7 +22,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/syndtr/goleveldb v1.0.0
-	github.com/tidwall/gjson v1.8.0
+	github.com/tidwall/gjson v1.8.1
 	github.com/tidwall/pretty v1.1.1 // indirect
 	github.com/ugorji/go v1.2.6 // indirect
 	github.com/wdvxdr1123/ZeroBot v1.2.0
