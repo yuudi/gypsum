@@ -295,7 +295,7 @@ func setGroupBanToEvent(event *zero.Event) lua.LGFunction {
 			return 1
 		}
 		seconds := L.ToNumber(1)
-		duration := int64(float64(seconds) * float64(time.Second))
+		duration := int64(float64(seconds))
 		targetID := int64(L.ToNumber(2))
 		if targetID == 0 {
 			targetID = event.UserID
