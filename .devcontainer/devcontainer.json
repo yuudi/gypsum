@@ -1,0 +1,8 @@
+// For format details, see https://aka.ms/devcontainer.json.
+{
+	"name": "gypsum go and node",
+	"image": "mcr.microsoft.com/devcontainers/go:1.19",
+	"features": {
+		"ghcr.io/devcontainers/features/node:1": {}
+	}
+}
